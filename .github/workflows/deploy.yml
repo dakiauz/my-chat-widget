@@ -1,0 +1,39 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        script: |
+          cd /var/www/dakia/frontend
+          
+          # FORCE update to match GitHub exacty -> The "Nuclear Option"
+          git fetch origin main
+          git reset --hard origin/main
+          
+          # Re-apply IP addresses - removed to prevent HTTP mixed content issues
+          # find src/ - type f - exec sed - i 's/localhost:8000/72.62.81.143/g' {} +
+          # find src/ - type f - exec sed - i 's/127.0.0.1:8000/72.62.81.143/g' {} +
+          
+          # Clean Build
+          rm -rf dist
+          npm install
+          
+          # Setup Env Vars
+          echo 'VITE_REVERB_APP_KEY="1p7oeyo29jgbxsdwu2hd"' > .env
+          echo 'VITE_REVERB_HOST="72.62.81.143"' >> .env
+          echo 'VITE_REVERB_PORT="8080"' >> .env
+          echo 'VITE_REVERB_SCHEME="http"' >> .env
+
+          npx vite build

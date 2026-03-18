@@ -1,0 +1,14 @@
+.toggleButton .toggleButton__item {
+    @apply p-2 bg-emerald-100/60 text-dark transition-colors duration-200 ease-in-out !rounded-none;
+}
+
+.toggleButton .toggleButton__item.active {
+    @apply bg-primary text-white;
+}
+
+.toggleButton .toggleButton__item:nth-of-type(1) {
+    @apply !rounded-l-md;
+}
+.toggleButton .toggleButton__item:nth-last-child(1) {
+    @apply !rounded-r-md;
+}

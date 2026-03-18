@@ -1,0 +1,860 @@
+import { Device, Call } from '@twilio/voice-sdk';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+    setDialing,
+    setActiveCall,
+    endCall,
+    receiveCall,
+    updateCallDuration,
+    incrementTimer,
+    setConnectionStatus,
+    setMuted,
+    setOnHold,
+    setSpeakerOn,
+    setRecording,
+    setActiveConnection,
+    setDialerOpen,
+} from '../../../slices/dialerSlice';
+import { addCallLog } from '../../../slices/callLogsSlice';
+import { formatCallDuration } from '../utils/helpers';
+import audioManager from '../utils/audio-manager';
+import { IRootState } from '../../../store';
+import { useGetSubAccountTokenQuery, useStartRecordingMutation, useUpdateRecordingStatusMutation } from '../../Integrations/services/TwillioApiSlice';
+import { useGetIntegrationsQuery } from '../../Integrations/services/IntegrationApi';
+import { IContact } from '../models/calls';
+import { getContactName, getContactNameWithoutFormatting, getContactPhoneNumber } from '../components/contacts/ContactList';
+import { getInitials } from '../../../shared/utils/utils';
+import { baseApi } from '../../../slices/baseApiSlice';
+import { showNotification } from '@mantine/notifications';
+import { setIncomingConnection } from '../../../slices/dialerSlice';
+
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+
+export const useTwilioDevice = () => {
+    const dispatch = useDispatch();
+    const [startRecordingMutation] = useStartRecordingMutation();
+    const [stopRecordingMutation] = useUpdateRecordingStatusMutation();
+    // Token hooks
+    const { data: socialsData, isFetching } = useGetIntegrationsQuery();
+    const socialPhoneNumber = useMemo(() => socialsData?.socails?.twilioPhoneNumber?.phoneNumber, [socialsData]);
+    //
+    const { data: tokenData, isLoading: isTokenLoading, refetch: refetchToken } = useGetSubAccountTokenQuery(undefined, { skip: !socialPhoneNumber });
+    // --- Audio enablement ---
+    const [audioEnabled, setAudioEnabled] = useState(false);
+    const enableAudioAfterInteraction = async () => {
+        if (!audioEnabled && audioManager) {
+            try {
+                await audioManager.enableAudio();
+                setAudioEnabled(true);
+            } catch { }
+        }
+    };
+    // Track active call state
+    const twilioDeviceRef = useRef<Device | null>(null);
+    // Dialer States
+    const callStateData = useSelector((state: IRootState) => state.dialer.callState);
+    const isRecording = useSelector((state: IRootState) => state.dialer.isRecording);
+
+    // Add refs for all state used in async/event handlers
+    const callState = useRef(callStateData);
+    useEffect(() => {
+        callState.current = callStateData;
+    }, [callStateData]);
+
+    const { dialedNumber } = useSelector((state: IRootState) => state.dialer);
+    const dialedNumberRef = useRef(dialedNumber);
+    useEffect(() => {
+        dialedNumberRef.current = dialedNumber;
+    }, [dialedNumber]);
+    const dialerConnectionStatus = useSelector((state: IRootState) => state.dialer.connectionStatus);
+    const isMuted = useSelector((state: IRootState) => state.dialer.isMuted);
+    const isOnHold = useSelector((state: IRootState) => state.dialer.isOnHold);
+    const isSpeakerOn = useSelector((state: IRootState) => state.dialer.isSpeakerOn);
+    const showKeypadInCall = useSelector((state: IRootState) => state.dialer.showKeypadInCall);
+    const incomingConnection = useSelector((state: IRootState) => state.dialer.incomingConnection);
+    const activeConnection = useSelector((state: IRootState) => state.dialer.activeConnection);
+
+    const isMutedRef = useRef(isMuted);
+    useEffect(() => {
+        isMutedRef.current = isMuted;
+    }, [isMuted]);
+
+    const isOnHoldRef = useRef(isOnHold);
+    useEffect(() => {
+        isOnHoldRef.current = isOnHold;
+    }, [isOnHold]);
+
+    const isSpeakerOnRef = useRef(isSpeakerOn);
+    useEffect(() => {
+        isSpeakerOnRef.current = isSpeakerOn;
+    }, [isSpeakerOn]);
+
+    // Hook States and refs
+    const activeConnectionRef = useRef<Call | null>(null);
+    const incomingConnectionRef = useRef<Call | null>(null);
+    useEffect(() => {
+        incomingConnectionRef.current = incomingConnection;
+    }, [incomingConnection]);
+    useEffect(() => {
+        activeConnectionRef.current = activeConnection;
+    }, [activeConnection]);
+
+    //Recording States
+    const [recordingStates, setRecordingStates] = useState<{
+        recordingSid: string | null;
+        callingSid: string | null;
+        status: 'paused' | 'in-progress';
+    } | null>(null);
+
+    const [error, setError] = useState<string | null>(null);
+    const [isRefreshingToken, setIsRefreshingToken] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
+    const MAX_RETRIES = 3;
+    const [tokenInfo, setTokenInfo] = useState<{ token: string; identity: string } | null>(null);
+    const timerRef = useRef<number | null>(null);
+    const callTimerRef = useRef(0);
+    const deviceSetupInProgressRef = useRef(false);
+    const lastInitializedTokenRef = useRef<string | null>(null);
+    //
+    const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
+
+    useEffect(() => {
+        if (twilioDevice) {
+            twilioDeviceRef.current = twilioDevice;
+        }
+    }, [twilioDevice]);
+
+    const initializeDevice = async (token: string) => {
+        if (deviceSetupInProgressRef.current) return;
+        deviceSetupInProgressRef.current = true;
+        try {
+            if (twilioDeviceRef.current) {
+                try {
+                    twilioDeviceRef.current.removeAllListeners();
+                    twilioDeviceRef.current.destroy();
+                    eventRef.current = false;
+                    // console.log('[Twilio] Destroyed previous device');
+                } catch { }
+            }
+            // console.log('[Twilio] Initializing device with token', token);
+            const twilioDevice = new Device(token);
+
+            twilioDevice.on('incoming', (call: Call) => {
+                console.log('[Twilio] Incoming call received!', call.parameters.From);
+
+                const callSid = call.customParameters?.get('CallSid');
+                if (callSid) {
+                    if (localStorage.getItem('activeCallSid') == callSid || localStorage.getItem('incomingCallSid') == callSid) return;
+                    if (localStorage.getItem('activeCallSid') || localStorage.getItem('incomingCallSid')) {
+                        call.reject();
+                        return;
+                    }
+                    localStorage.setItem('incomingCallSid', callSid);
+                }
+
+                incomingConnectionRef.current = call;
+                dispatch(setIncomingConnection(call));
+                dispatch(setActiveConnection(call));
+
+                enableAudioAfterInteraction().then(() => {
+                    if (audioManager) audioManager.playRingtone();
+                });
+
+                const callerNumber = call.customParameters?.get('From') || call.parameters?.From || 'Unknown';
+                const incomingContact: IContact = {
+                    id: callSid || `incoming-${Date.now()}`,
+                    company_id: -1,
+                    lead_id: -1,
+                    accountSid: call?.customParameters?.get('AccountSid') || call?.parameters?.AccountSid || '',
+                    callSid: callSid || '',
+                    status: 'completed',
+                    callDuration: null,
+                    recordingUrl: null,
+                    recordingSid: null,
+                    recordingDuration: null,
+                    direction: 'INBOUND',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    from: callerNumber,
+                    to: socialPhoneNumber || '',
+                    lead: null,
+                    recording: [],
+                };
+
+                dispatch(receiveCall(incomingContact));
+
+                call.on('cancel', () => {
+                    console.log('[Twilio] Incoming call canceled before answering');
+                    dispatch(setIncomingConnection(null));
+                    dispatch(setActiveConnection(null));
+                    setRecordingStates(null);
+                    localStorage.removeItem('activeCallSid');
+                    localStorage.removeItem('incomingCallSid');
+                    dispatch(endCall());
+                    dispatch(setDialerOpen(false));
+
+                    const fromNumber = call.customParameters?.get('From');
+                    dispatch((baseApi.util.invalidateTags as any)(['Calls']));
+                    if (audioManager) audioManager.stopRingtone();
+                });
+            });
+
+            const handleSuccessfulRegistration = () => {
+                console.log('The device is ready to receive incoming calls.');
+                dispatch(setConnectionStatus('connected'));
+                setRetryCount(0);
+                setError(null);
+                deviceSetupInProgressRef.current = false;
+            };
+
+            twilioDevice.on('registered', handleSuccessfulRegistration);
+
+            setTwilioDevice(twilioDevice);
+
+            // Register the device to receive incoming calls
+            twilioDevice.register().catch((err: any) => {
+                console.error('[Twilio] Failed to register device:', err);
+                setError('Failed to register Twilio Device');
+                if (dialerConnectionStatus != 'disconnected') dispatch(setConnectionStatus('error'));
+                deviceSetupInProgressRef.current = false;
+            });
+        } catch (err) {
+            // console.log('[Twilio] Device setup failed', err);
+            setError('Failed to setup Twilio Device. Device is disabled.');
+            if (dialerConnectionStatus != 'disconnected') dispatch(setConnectionStatus('error'));
+            deviceSetupInProgressRef.current = false;
+            // console.log('[Twilio] Device setup error', err);
+        }
+    };
+
+    const eventRef = useRef<any>(null);
+
+    useEffect(() => {
+        if (!incomingConnection) return;
+        let conn = incomingConnection;
+        console.log('[Twilio] Incoming call', conn);
+
+        enableAudioAfterInteraction().then(() => {
+            if (audioManager) audioManager.playRingtone();
+        });
+
+        const callerNumber = conn.customParameters?.get('From') || conn.parameters?.From || 'Unknown';
+
+        const incomingContact: IContact = {
+            id: conn?.customParameters?.get('CallSid') || conn?.parameters?.CallSid || `incoming-${Date.now()}`,
+            company_id: -1,
+            lead_id: -1,
+            accountSid: conn?.customParameters?.get('AccountSid') || conn?.parameters?.AccountSid || '',
+            callSid: conn?.customParameters?.get('CallSid') || conn?.parameters?.CallSid || '',
+            status: 'completed',
+            callDuration: null,
+            recordingUrl: null,
+            recordingSid: null,
+            recordingDuration: null,
+            direction: 'INBOUND',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            from: callerNumber,
+            to: socialPhoneNumber || '',
+            lead: null,
+            recording: [],
+        };
+
+        // dispatch(setIncomingConnection(conn)); // ⬅️ This is redundant here as the state already changed
+        // activeConnectionRef.current = true; // Mark call as active
+        // 🟢 CORRECT DISPATCH: This should be the main action for incoming UI
+        dispatch(receiveCall(incomingContact));
+
+        // ✅ CONSOLE LOG TO CONFIRM DISPATCH
+        console.log('[Twilio] receiveCall action dispatched for incoming call from:', callerNumber);
+    }, [incomingConnection]);
+
+    const setupListeners = (twilioDevice: Device) => {
+        if (eventRef.current) return;
+        if (twilioDevice) {
+            // Twilio event handlers
+            eventRef.current = true;
+
+            twilioDevice?.on('call', (call: Call) => {
+                console.log('[Twilio] Device call', call);
+                // dispatch(setActiveConnection(call));
+                dispatch(setActiveCall());
+            });
+
+            twilioDevice?.on('connect', (call: Call) => {
+                console.log('[Twilio] Device call', call);
+                // dispatch(setActiveConnection(call));
+                dispatch(setActiveCall());
+            });
+
+            twilioDevice?.on('error', (err: any) => {
+                // console.log('[Twilio] Device error', err);
+                setError('Twilio error: ' + (err?.message || 'Unknown error'));
+                if (dialerConnectionStatus != 'disconnected') dispatch(setConnectionStatus('error'));
+            });
+
+            twilioDevice?.on('disconnect', (call: Call) => {
+                // console.log('[Twilio] Device disconnect', call);
+                localStorage.removeItem('twilioCallAnswered');
+                dispatch(setIncomingConnection(null));
+                dispatch(setActiveConnection(null));
+                setRecordingStates(null);
+                localStorage.removeItem('activeCallSid');
+                localStorage.removeItem('incomingCallSid');
+                // activeConnectionRef.current = false; // Reset active call state
+                dispatch(endCall());
+                if (audioManager) audioManager.stopRingtone();
+
+                // console.log('[Twilio] Device disconnect--------');
+                // console.log('callState.current', callState.current);
+                incomingConnectionRef.current = null;
+                activeConnectionRef.current = null;
+                // if (activeConnectionRef.current) console.log('Active', activeConnectionRef.current);
+                // if (incomingConnectionRef.current) console.log('Incoming', incomingConnectionRef.current);
+
+                // if (activeConnectionRef.current) console.log('Active', activeConnectionRef.current);
+                // if (incomingConnectionRef.current) console.log('Incoming', incomingConnectionRef.current);
+                // handleCallEnd(call);
+                // activeConnectionRef.current = false;
+                dispatch(setActiveConnection(null));
+                const duration = formatCallDuration(callTimerRef.current);
+                const callType = incomingConnection ? 'incoming' : 'outgoing';
+                const callStatus = callTimerRef.current > 0 ? 'completed' : 'missed';
+                dispatch(
+                    addCallLog({
+                        contactId: dialedNumberRef.current,
+                        contactName: dialedNumberRef.current,
+                        contactInitials: dialedNumberRef.current,
+                        phone: dialedNumberRef.current,
+                        type: callType,
+                        callDuration: duration,
+                        status: callStatus,
+                        recording: [],
+                    })
+                );
+                const fromNumber = call.customParameters?.get('From');
+                dispatch((baseApi.util.invalidateTags as any)(['Calls']));
+            });
+
+            twilioDevice?.on('offline', async () => {
+                // console.log('[Twilio] Device offline');
+                dispatch(setConnectionStatus('disconnected'));
+            });
+        }
+    };
+
+    useEffect(() => {
+        if (!twilioDevice) return;
+        if (twilioDeviceRef.current) {
+            return setupListeners(twilioDeviceRef.current);
+        }
+    }, [twilioDevice]);
+
+    useEffect(() => {
+        if (activeConnection?.status === 'open' && !isRecording) {
+            startRecording();
+        }
+        if (!callState.current.isActive) return;
+        if (activeConnection && callState.current.isActive) {
+            // console.log('[Twilio] Call state is active, starting timer');
+            // console.log('activeConnectionRef', activeConnection);
+            activeConnection.on('disconnect', () => {
+                // console.log('[Twilio] Active call disconnected');
+                localStorage.removeItem('twilioCallAnswered');
+                dispatch(setIncomingConnection(null));
+                dispatch(setActiveConnection(null));
+                setRecordingStates(null);
+                localStorage.removeItem('activeCallSid');
+                localStorage.removeItem('incomingCallSid');
+                // activeConnectionRef.current = false; // Reset active call state
+                dispatch(endCall());
+                dispatch((baseApi.util.invalidateTags as any)(['Calls']));
+                if (audioManager) audioManager.stopRingtone();
+            });
+            activeConnection.on('cancel', () => {
+                // if (incomingConnectionRef.current) return;
+                // console.log('[Twilio] Active call canceled');
+                // if (activeConnectionRef.current) console.log('Active', activeConnectionRef.current);
+                // if (incomingConnectionRef.current) console.log('Incoming', incomingConnectionRef.current);
+                // return console.log('Active Connection', activeConnection);
+            });
+        }
+    }, [activeConnection, callState.current.isActive, isRecording]);
+
+    // useEffect(() => {
+    //     if (incomingConnectionRef.current && callState.current.isIncoming) {
+    //         console.log('[Twilio] Call state is Incoming, starting timer');
+    //         console.log('incomingConnectionRef', incomingConnectionRef.current);
+    //         incomingConnectionRef.current.on('disconnect', () => {
+    //             dispatch(setIncomingConnection(null));
+    //             dispatch(setActiveConnection(null));
+    //             // incomingConnectionRef.current = false; // Reset active call state
+    //             dispatch(endCall());
+    //             if (audioManager) audioManager.stopRingtone();
+    //         });
+    //         incomingConnectionRef.current.on('cancel', () => {
+    //             if (callState.current.isActive) return;
+    //             // if (incomingConnectionRef.current) return;
+    //             console.log('[Twilio] Incoming call canceled');
+    //             if (incomingConnectionRef.current) console.log('Incoming', incomingConnectionRef.current);
+    //             dispatch(setIncomingConnection(null));
+    //             dispatch(setActiveConnection(null));
+    //             // incomingConnectionRef.current = false; // Reset active call state
+    //             dispatch(endCall());
+    //             if (audioManager) audioManager.stopRingtone();
+    //             return console.log('Incomming Connection', incomingConnectionRef.current);
+    //         });
+    //     }
+    // }, [incomingConnection, callState.current.isIncoming, callState.current.isActive]);
+
+    // --- Call end cleanup ---
+    const handleCallEnd = (conn?: any) => {
+        // console.log('[Twilio] handleCallEnd', conn, callState.current, incomingConnection);
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+        if (audioManager) audioManager.playCallEndSound();
+        if (callState.current.isActive && callState.current.contact) {
+            const duration = formatCallDuration(callTimerRef.current);
+            const callType = incomingConnection ? 'incoming' : 'outgoing';
+            const callStatus = callTimerRef.current > 0 ? 'completed' : 'missed';
+            dispatch(
+                addCallLog({
+                    contactId: getContactPhoneNumber(callState.current.contact),
+                    contactName: getContactName(callState.current.contact),
+                    contactInitials: getInitials(getContactNameWithoutFormatting(callState.current.contact)),
+                    phone: getContactPhoneNumber(callState.current.contact),
+                    type: callType,
+                    callDuration: duration,
+                    status: callStatus,
+                    recording: callState.current.contact?.recording || [],
+                })
+            );
+        }
+        dispatch(setActiveConnection(null));
+        dispatch(setIncomingConnection(null));
+        setRecordingStates(null);
+        localStorage.removeItem('activeCallSid');
+        localStorage.removeItem('incomingCallSid');
+        dispatch(endCall());
+    };
+
+    // --- Outgoing call ---
+    const makeCall = async (phoneNumber: string, contact?: IContact | null) => {
+        await enableAudioAfterInteraction();
+        if (dialerConnectionStatus !== 'connected' || !twilioDeviceRef.current) {
+            setError('Device not ready');
+            return false;
+        }
+        try {
+            const formattedNumber = formatPhoneNumberForDialing(phoneNumber);
+            const callContact =
+                contact ||
+                ({
+                    id: -1,
+                    company_id: -1,
+                    lead_id: -1,
+                    accountSid: '',
+                    callSid: '',
+                    status: 'completed',
+                    callDuration: null,
+                    recordingUrl: null,
+                    recordingSid: null,
+                    recordingDuration: null,
+                    direction: 'OUTBOUND',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    from: socialPhoneNumber || '',
+                    to: phoneNumber,
+                    lead: null,
+                    recording: [],
+                } as IContact);
+            dispatch(setDialing({ contact: callContact, dialedNumber: phoneNumber }));
+            if (audioManager) audioManager.playDialTone();
+            const call = await twilioDeviceRef.current.connect({
+                params: {
+                    To: formattedNumber,
+                    From: socialPhoneNumber || '',
+                },
+            });
+            dispatch(setActiveConnection(call));
+
+            call.on('ringing', () => {
+                console.log('[Twilio] Call is ringing');
+            });
+            call.on('accept', () => {
+                console.log('[Twilio] Call accepted');
+                if (audioManager) audioManager.stopDialTone();
+                localStorage.setItem('twilioCallAnswered', 'true');
+                dispatch(setActiveCall());
+                dispatch(setIncomingConnection(null));
+                const callSid = call.customParameters?.get('CallSid');
+                if (callSid) {
+                    localStorage.setItem('activeCallSid', callSid);
+                }
+                localStorage.removeItem('incomingCallSid');
+                // activeConnectionRef.current = true; // Mark call as active
+                // dispatch(setActiveConnection(call));
+                // dispatch(setActiveCall());
+                callTimerRef.current = 0; // Reset timer for new call
+                if (timerRef.current) clearTimeout(timerRef.current);
+                timerRef.current = window.setInterval(() => {
+                    dispatch(incrementTimer());
+                    callTimerRef.current += 1; // Update local ref
+                }, 1000);
+            });
+            call.on('disconnect', () => {
+                console.log('[Twilio] Call disconnected');
+                handleCallEnd(call);
+                if (audioManager) audioManager.stopDialTone();
+                localStorage.removeItem('twilioCallAnswered');
+                dispatch(setIncomingConnection(null));
+                dispatch(setActiveConnection(null));
+                setRecordingStates(null);
+                localStorage.removeItem('activeCallSid');
+                localStorage.removeItem('incomingCallSid');
+                // activeConnectionRef.current = false; // Reset active call state
+                dispatch(endCall());
+                const fromNumber = call.customParameters?.get('From');
+                dispatch((baseApi.util.invalidateTags as any)(['Calls']));
+            });
+            call.on('cancel', () => {
+                // console.log('[Twilio] Call canceled');
+                if (localStorage.getItem('twilioCallAnswered')) return;
+                handleCallEnd();
+                if (audioManager) audioManager.stopDialTone();
+                localStorage.removeItem('twilioCallAnswered');
+                dispatch(setIncomingConnection(null));
+                dispatch(setActiveConnection(null));
+                setRecordingStates(null);
+                localStorage.removeItem('activeCallSid');
+                localStorage.removeItem('incomingCallSid');
+                // activeConnectionRef.current = false; // Reset active call state
+                dispatch(endCall());
+                const fromNumber = call.customParameters?.get('From');
+                dispatch((baseApi.util.invalidateTags as any)(['Calls']));
+            });
+
+            const callSid = call.customParameters?.get('CallSid');
+            if (callSid) {
+                localStorage.setItem('activeCallSid', callSid);
+            }
+            localStorage.removeItem('incomingCallSid');
+            return true;
+        } catch (err) {
+            setError('Failed to make call');
+            dispatch(endCall());
+            if (audioManager) audioManager.stopDialTone();
+            return false;
+        }
+    };
+
+    // --- Hang up ---
+    const hangUp = () => {
+        // console.log('[Twilio] hangUp');
+        try {
+            if (activeConnectionRef.current) {
+                activeConnectionRef.current.disconnect();
+            } else if (incomingConnectionRef.current) {
+                incomingConnectionRef.current.reject();
+            } else if (twilioDeviceRef.current) {
+                twilioDeviceRef.current.disconnectAll();
+            }
+            handleCallEnd();
+        } catch (err) {
+            setError('Failed to hang up');
+            handleCallEnd();
+        }
+    };
+
+    // --- Answer incoming call ---
+    const handleAnswerCall = useCallback(async () => {
+        // await enableAudioAfterInteraction();
+        // if (audioManager) audioManager.stopRingtone();
+        const conn = incomingConnectionRef.current || incomingConnection; // use ref for latest value
+        if (conn) {
+            try {
+                localStorage.setItem('twilioCallAnswered', 'true');
+                conn.accept();
+
+                // ✅ START TIMER LOGIC RIGHT AFTER ACCEPTING
+                callTimerRef.current = 0; // Reset timer for new call
+                if (timerRef.current) clearTimeout(timerRef.current);
+                timerRef.current = window.setInterval(() => {
+                    dispatch(incrementTimer());
+                    callTimerRef.current += 1; // Update local ref
+                }, 1000);
+
+                dispatch(setIncomingConnection(null));
+                const callSid = conn.customParameters?.get('CallSid');
+                if (callSid) {
+                    localStorage.setItem('activeCallSid', callSid);
+                }
+                localStorage.removeItem('incomingCallSid');
+            } catch (err) {
+                setError('Failed to answer call');
+            }
+        } else {
+            dispatch(endCall());
+        }
+    }, [audioManager, incomingConnectionRef.current, incomingConnection, dispatch]);
+
+    // --- Reject incoming call ---
+    const rejectCall = useCallback(async () => {
+        // if (audioManager) audioManager.stopRingtone();
+        const conn = incomingConnectionRef.current || incomingConnection; // use ref for latest value
+        console.log('[Twilio] Rejecting call', conn);
+        if (conn) {
+            try {
+                conn.reject();
+                dispatch(setIncomingConnection(null));
+                localStorage.removeItem('incomingCallSid');
+                dispatch(endCall());
+            } catch (err) {
+                setError('Failed to reject call');
+            }
+        } else {
+            dispatch(endCall());
+        }
+    }, [audioManager, incomingConnectionRef.current, incomingConnection, dispatch]);
+
+    // --- Mute/unmute ---
+    const toggleMute = () => {
+        let call = activeConnectionRef.current || incomingConnectionRef.current || activeConnection || incomingConnection; // use refs for latest value
+        if (call) {
+            try {
+                const isNowMuted = !isMutedRef.current;
+                if (isNowMuted) {
+                    call.mute();
+                } else {
+                    call.mute(false); // SDK 2.x still supports mute(false) for unmute
+                }
+                dispatch(setMuted(isNowMuted));
+                return isNowMuted;
+            } catch (err) {
+                return isMutedRef.current;
+            }
+        }
+        return isMutedRef.current;
+    };
+
+    // --- Send DTMF ---
+    const sendDigits = async (digit: string) => {
+        await enableAudioAfterInteraction();
+        if (audioManager) audioManager.playDTMF(digit);
+        const call = activeConnectionRef.current; // use ref for latest value
+        if (call) {
+            try {
+                call.sendDigits(digit);
+            } catch { }
+        }
+    };
+
+    // --- Hold/unhold (simulate) ---
+    const toggleHold = () => {
+        // console.log('[Twilio] toggleHold', isOnHold);
+        const isNowOnHold = !isOnHoldRef.current;
+        dispatch(setOnHold(isNowOnHold));
+        return isNowOnHold;
+    };
+    // --- Toggle speaker (simulate) ---
+    const toggleSpeaker = () => {
+        // console.log('[Twilio] toggleSpeaker', isSpeakerOn);
+        const isNowSpeakerOn = !isSpeakerOnRef.current;
+        dispatch(setSpeakerOn(isNowSpeakerOn));
+        return isNowSpeakerOn;
+    };
+
+    // --- Set audio muted state ---
+    const setAudioMuted = (muted: boolean) => {
+        // console.log('[Twilio] setAudioMuted', muted);
+        if (audioManager) audioManager.setMuted(muted);
+        dispatch(setMuted(muted));
+    };
+    // --- Format phone number ---
+    const formatPhoneNumberForDialing = (phoneNumber: string): string => {
+        const digitsOnly = phoneNumber.replace(/\D/g, '');
+        if (digitsOnly.length === 10) {
+            return `+1${digitsOnly}`;
+        } else if (digitsOnly.startsWith('1') && digitsOnly.length === 11) {
+            return `+${digitsOnly}`;
+        } else if (digitsOnly.startsWith('+')) {
+            return digitsOnly;
+        } else {
+            return `+${digitsOnly}`;
+        }
+    };
+
+    // --- Initial device setup on mount ---
+    useEffect(() => {
+        if (tokenData && tokenData.token) {
+            // Only initialize if token is new
+            if (lastInitializedTokenRef.current !== tokenData.token) {
+                setTokenInfo({ token: tokenData.token, identity: tokenData.identity || 'user-demo' });
+                initializeDevice(tokenData.token);
+                localStorage.removeItem('twilioCallAnswered');
+                dispatch(setIncomingConnection(null));
+                dispatch(setActiveConnection(null));
+                setRecordingStates(null);
+                localStorage.removeItem('activeCallSid');
+                localStorage.removeItem('incomingCallSid');
+                lastInitializedTokenRef.current = tokenData.token;
+            }
+        }
+    }, [tokenData, initializeDevice]);
+
+    // --- Audio enablement on first user interaction ---
+    useEffect(() => {
+        const handler = () => {
+            enableAudioAfterInteraction();
+        };
+        document.addEventListener('click', handler);
+        document.addEventListener('touchstart', handler);
+        document.addEventListener('keydown', handler);
+        return () => {
+            document.removeEventListener('click', handler);
+            document.removeEventListener('touchstart', handler);
+            document.removeEventListener('keydown', handler);
+        };
+    }, [enableAudioAfterInteraction]);
+
+    // --- Reconnect logic for UI ---
+    const canReconnect = useMemo(() => {
+        if (!socialPhoneNumber) return false;
+        return dialerConnectionStatus === 'disconnected' || dialerConnectionStatus === 'error';
+    }, [dialerConnectionStatus, socialPhoneNumber]);
+
+    const reconnect = () => {
+        refetchToken()
+            .unwrap()
+            .then((res) => {
+                if (res.token) {
+                    initializeDevice(res.token);
+                    lastInitializedTokenRef.current = res.token;
+                } else {
+                    setError('Failed to refresh Twilio token.');
+                }
+            })
+            .catch((err) => {
+                setError('Failed to refresh Twilio token: ' + (err?.message || 'Unknown error'));
+            });
+    };
+
+    const startRecording = useCallback(async () => {
+        if (!activeConnection) {
+            console.warn('[Twilio] No active connection to start recording.');
+            return;
+        }
+
+        const callSid = activeConnection.parameters?.CallSid || activeConnection._parameters?.CallSid;
+        if (!callSid) {
+            console.error('[Twilio] No Call SID found on active connection.');
+            return;
+        }
+
+        console.log('[Twilio Recording] Attempting to start recording for Call SID:', callSid);
+
+        try {
+            const response = await startRecordingMutation({ callSid }).unwrap();
+
+            // Assuming response.recordingSid exists
+            const recordingSid = response.recordingSid;
+            console.log('[Twilio Recording] Started recording with SID:', recordingSid);
+
+            // Set recording state so stopRecording can access it
+            setRecordingStates({
+                callingSid: callSid,
+                recordingSid,
+                status: 'in-progress',
+            });
+
+            dispatch(setRecording('in-progress'));
+
+            showNotification({
+                title: 'Call Recording Started',
+                message: `Recording for ${callSid} initiated.`,
+                color: 'green',
+            });
+        } catch (error) {
+            console.error('[Twilio Recording] Failed to start recording:', error);
+            dispatch(setRecording(null));
+            showNotification({
+                title: 'Recording Error',
+                message: 'Failed to start call recording.',
+                color: 'red',
+            });
+        }
+    }, [activeConnection, startRecordingMutation, dispatch]);
+
+    const stopRecording = () => {
+        console.log('[DEBUG] stopRecording called');
+        console.log('[DEBUG] isRecording:', isRecording);
+        console.log('[DEBUG] recordingStates:', recordingStates);
+        console.log('[DEBUG] recordingStates.callingSid:', recordingStates?.callingSid);
+        console.log('[DEBUG] recordingStates.recordingSid:', recordingStates?.recordingSid);
+
+        if (isRecording && recordingStates?.recordingSid && recordingStates?.callingSid) {
+            //alert(`Stopping recording for Call SID: ${recordingStates.callingSid} and Recording SID: ${recordingStates.recordingSid}`);
+            try {
+                stopRecordingMutation({
+                    callSid: recordingStates.callingSid,
+                    recordingSid: recordingStates.recordingSid,
+                    status: recordingStates.status == 'in-progress' ? 'paused' : 'in-progress',
+                })
+                    .unwrap()
+                    .then((response) => {
+                        dispatch(setRecording(recordingStates.status == 'in-progress' ? 'paused' : 'in-progress'));
+                        showNotification({
+                            title: recordingStates.status === 'in-progress' ? 'Recording Paused' : 'Recording Resumed',
+                            message: `Call recording has been ${recordingStates.status === 'in-progress' ? 'paused' : 'resumed'} successfully.`,
+                            color: 'green',
+                        });
+                        setRecordingStates({
+                            recordingSid: recordingStates.recordingSid,
+                            callingSid: recordingStates.callingSid,
+                            status: recordingStates.status === 'in-progress' ? 'paused' : 'in-progress',
+                        });
+                    })
+                    .catch((err) => {
+                        console.error('[Twilio] Failed to stop recording', err);
+                    });
+            } catch (err) {
+                console.error('[Twilio] Failed to stop recording', err);
+            }
+        } else {
+            console.warn('[Twilio] stopRecording not available on connection');
+        }
+    };
+
+    return {
+        device: twilioDeviceRef.current,
+        deviceReady: dialerConnectionStatus === 'connected',
+        connection: activeConnection,
+        incomingConnection,
+        error,
+        connectionStatus: dialerConnectionStatus,
+        isRefreshingToken,
+        makeCall,
+        answerCall: handleAnswerCall,
+        rejectCall,
+        hangUp,
+        toggleMute,
+        toggleHold,
+        toggleSpeaker,
+        sendDigits,
+        setAudioMuted,
+        audioEnabled,
+        tokenInfo,
+        isMuted,
+        isOnHold,
+        isSpeakerOn,
+        showKeypadInCall,
+        canReconnect,
+        reconnect,
+        isTokenLoading,
+        startRecording,
+        stopRecording,
+    };
+};
