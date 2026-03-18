@@ -167,6 +167,7 @@ export const useTwilioDevice = () => {
             if (callTimerRef.current > 0) {
                 dispatch(
                     addCallLog({
+                        callSid: localStorage.getItem('activeCallSid') || 'unknown',
                         contactId: getContactPhoneNumber(callState.current.contact),
                         contactName: getContactName(callState.current.contact),
                         contactInitials: getInitials(getContactNameWithoutFormatting(callState.current.contact)),

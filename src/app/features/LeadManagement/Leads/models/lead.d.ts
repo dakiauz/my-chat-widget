@@ -28,6 +28,7 @@ export interface ILead {
     assigned_to?: AssignedTo[];
     otherFields?: null | string;
     classification?: 'Hot' | 'Cold' | 'Warm' | null;
+    disposition?: string | null;
 }
 
 export interface AssignedTo {
