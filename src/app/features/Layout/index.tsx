@@ -10,6 +10,7 @@ import { IRootState } from '../../store';
 import Footer from '../../../_theme/components/Layouts/Footer';
 import { FloatingDialer } from '../Calls/components/floating/floating-dialer';
 import { FloatingActionButtons } from '../Calls/components/floating/floating-action-buttons';
+import { PowerDialerFloating } from '../Calls/components/floating/power-dialer-floating';
 import { useGetIntegrationsQuery } from '../Integrations/services/IntegrationApi';
 import { hasRole } from '../../shared/utils/utils';
 
@@ -103,6 +104,7 @@ function index({ children }: PropsWithChildren): ReturnType<FC> {
                         {makeCallPermission && (
                             <>
                                 <FloatingDialer />
+                                <PowerDialerFloating />
                                 <FloatingActionButtons />
                             </>
                         )}
