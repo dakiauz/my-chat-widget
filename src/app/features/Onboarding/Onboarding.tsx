@@ -120,7 +120,7 @@ const Onboarding = () => {
 
                 try {
                     console.log(`Fetching history for: ${activeAgent} (Company: ${user?.company_id})`);
-                    const res = await axios.get(`${import.meta.env.VITE_BACKEND_API_ADDRESS}/demo/history`, {
+                    const res = await axios.get('http://localhost:8000/api/demo/history', {
                         params: { type: activeAgent },
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
@@ -196,8 +196,8 @@ const Onboarding = () => {
 
         try {
             const endpoint = activeAgent === 'website'
-                ? `${import.meta.env.VITE_BACKEND_API_ADDRESS}/demo/chat/send`
-                : `${import.meta.env.VITE_BACKEND_API_ADDRESS}/demo/missed/send`;
+                ? 'http://localhost:8000/api/demo/chat/send'
+                : 'http://localhost:8000/api/demo/missed/send';
 
             const res = await axios.post(endpoint, {
                 message: msg,
@@ -227,7 +227,7 @@ const Onboarding = () => {
 
     const handleClearChat = async () => {
         try {
-            await axios.delete(`${import.meta.env.VITE_BACKEND_API_ADDRESS}/demo/history`, {
+            await axios.delete('http://localhost:8000/api/demo/history', {
                 data: { session_id: sessionId, type: activeAgent },
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -302,7 +302,7 @@ const Onboarding = () => {
         if (!token) return;
         try {
             console.log("Fetching prompts from API...");
-            const res = await axios.get(`${import.meta.env.VITE_BACKEND_API_ADDRESS}/company/prompts`, {
+            const res = await axios.get('http://localhost:8000/api/company/prompts', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             console.log("API Response Data:", res.data);
@@ -358,8 +358,8 @@ const Onboarding = () => {
     const fetchCompanyData = async () => {
         try {
             // Assume 8001 for FastAPI service based on context
-            const res = await axios.get(`${import.meta.env.VITE_BACKEND_API_ADDRESS}/ai/get-company-data/${companyId}`, {
-                headers: { `Authorization': `Bearer ${ token }` }
+            const res = await axios.get(`http://localhost:8000/api/ai/get-company-data/${companyId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.data && res.data.success && res.data.business_data && Object.keys(res.data.business_data).length > 0) {
                 console.log("Fetched company data:", res.data.business_data);
@@ -396,11 +396,11 @@ const Onboarding = () => {
     const handlePromptSave = async (key: string) => {
         setPromptSaving(prev => ({ ...prev, [key]: true }));
         try {
-            await axios.post(`${ import.meta.env.VITE_BACKEND_API_ADDRESS } / company / prompts`, {
+            await axios.post('http://localhost:8000/api/company/prompts', {
                 key,
                 prompt_text: (prompts as any)[key]
             }, {
-                headers: { 'Authorization': `Bearer ${ token }` }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             showNotification({
                 title: 'Saved',
@@ -422,8 +422,8 @@ const Onboarding = () => {
         if (!window.confirm("Are you sure you want to reset to the default system prompt? The page will refresh.")) return;
 
         try {
-            const res = await axios.delete(`${ import.meta.env.VITE_BACKEND_API_ADDRESS } / company / prompts`, {
-                headers: { 'Authorization': `Bearer ${ token }` },
+            const res = await axios.delete('http://localhost:8000/api/company/prompts', {
+                headers: { 'Authorization': `Bearer ${token}` },
                 data: { key }
             });
 
@@ -473,10 +473,10 @@ const Onboarding = () => {
                 formData.append('file', selectedFile);
             }
 
-            const response = await axios.post(`${ import.meta.env.VITE_BACKEND_API_ADDRESS } / ai / extract - from - source`, formData, {
+            const response = await axios.post('http://localhost:8000/api/ai/extract-from-source', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
-                    'Authorization': `Bearer ${ token }`
+                    'Authorization': `Bearer ${token}`
                 }
             });
 
@@ -545,7 +545,7 @@ const Onboarding = () => {
                         // Check for empty or "I do not know"
                         if (!value || (typeof value === 'string' && !value.trim()) || value === "I do not know") {
                             missingFields.push(key);
-                            newErrors[`${ section } - ${ key }`] = true;
+                            newErrors[`${section}-${key}`] = true;
                             hasError = true;
                         }
                     });
@@ -573,20 +573,20 @@ const Onboarding = () => {
 
         try {
             setIsSaving(true);
-            const response = await axios.post(`${ import.meta.env.VITE_BACKEND_API_ADDRESS } / ai / index - to - pinecone`, {
+            const response = await axios.post('http://localhost:8000/api/ai/index-to-pinecone', {
                 company_id: companyId,
                 scraped_json_path: jsonPathToUse,
                 edited_business_data: scrapedData
             }, {
-                headers: { 'Authorization': `Bearer ${ token }` }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (response.data.success) {
                 // Activate AI in Backend
                 try {
-                    await axios.post(`${ import.meta.env.VITE_BACKEND_API_ADDRESS } / company / complete - onboarding`, {}, {
+                    await axios.post('http://localhost:8000/api/company/complete-onboarding', {}, {
                         headers: {
-                            'Authorization': `Bearer ${ token }`
+                            'Authorization': `Bearer ${token}`
                         }
                     });
                 } catch (activationError) {
@@ -647,32 +647,32 @@ const Onboarding = () => {
                             <div className="flex justify-center items-center w-full max-w-3xl mx-auto mt-8">
                                 {/* Step 1 */}
                                 <div className="flex flex-col items-center relative">
-                                    <div className={`w - 10 h - 10 rounded - full flex items - center justify - center font - bold text - lg border - 2 ${ currentStep >= 1 ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2 ${currentStep >= 1 ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}>
                                         {currentStep > 1 ? '✓' : '1'}
                                     </div>
-                                    <span className={`absolute - bottom - 8 text - xs font - semibold whitespace - nowrap ${ currentStep >= 1 ? 'text-purple-700' : 'text-gray-400' } `}>Data Source</span>
+                                    <span className={`absolute -bottom-8 text-xs font-semibold whitespace-nowrap ${currentStep >= 1 ? 'text-purple-700' : 'text-gray-400'}`}>Data Source</span>
                                 </div>
 
                                 {/* Connector */}
-                                <div className={`h - 1 flex - 1 mx - 4 rounded ${ currentStep >= 2 ? 'bg-purple-200' : 'bg-gray-100' } `}></div>
+                                <div className={`h-1 flex-1 mx-4 rounded ${currentStep >= 2 ? 'bg-purple-200' : 'bg-gray-100'}`}></div>
 
                                 {/* Step 2 */}
                                 <div className="flex flex-col items-center relative">
-                                    <div className={`w - 10 h - 10 rounded - full flex items - center justify - center font - bold text - lg border - 2 ${ currentStep >= 2 ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-300 text-gray-400' } `}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2 ${currentStep >= 2 ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}>
                                         {currentStep > 2 ? '✓' : '2'}
                                     </div>
-                                    <span className={`absolute - bottom - 8 text - xs font - semibold whitespace - nowrap ${ currentStep >= 2 ? 'text-purple-700' : 'text-gray-400' } `}>Business Identity</span>
+                                    <span className={`absolute -bottom-8 text-xs font-semibold whitespace-nowrap ${currentStep >= 2 ? 'text-purple-700' : 'text-gray-400'}`}>Business Identity</span>
                                 </div>
 
                                 {/* Connector */}
-                                <div className={`h - 1 flex - 1 mx - 4 rounded ${ currentStep >= 3 ? 'bg-purple-200' : 'bg-gray-100' } `}></div>
+                                <div className={`h-1 flex-1 mx-4 rounded ${currentStep >= 3 ? 'bg-purple-200' : 'bg-gray-100'}`}></div>
 
                                 {/* Step 3 */}
                                 <div className="flex flex-col items-center relative">
-                                    <div className={`w - 10 h - 10 rounded - full flex items - center justify - center font - bold text - lg border - 2 ${ currentStep >= 3 ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-300 text-gray-400' } `}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2 ${currentStep >= 3 ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}>
                                         3
                                     </div>
-                                    <span className={`absolute - bottom - 8 text - xs font - semibold whitespace - nowrap ${ currentStep >= 3 ? 'text-purple-700' : 'text-gray-400' } `}>Agent Preview</span>
+                                    <span className={`absolute -bottom-8 text-xs font-semibold whitespace-nowrap ${currentStep >= 3 ? 'text-purple-700' : 'text-gray-400'}`}>Agent Preview</span>
                                 </div>
                             </div>
                         )}
@@ -764,7 +764,7 @@ const Onboarding = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                             {Object.entries(fields).map(([label, value]: [string, any]) => {
-                                const fieldId = `${ section } -${ label } `;
+                                const fieldId = `${section}-${label}`;
                                 const isError = errors[fieldId];
                                 const baseClasses = "bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm transition-all duration-200";
                                 const errorClasses = "!border-red-500 !ring-1 !ring-red-500";
@@ -781,21 +781,21 @@ const Onboarding = () => {
                                                     updateField(section, label, (e.target as any).value);
                                                     if (errors[fieldId]) setErrors(prev => ({ ...prev, [fieldId]: false }));
                                                 }}
-                                                placeholder={`Enter ${ label } `}
-                                                className={`${ baseClasses } ${ isError ? errorClasses : '' } `}
+                                                placeholder={`Enter ${label}`}
+                                                className={`${baseClasses} ${isError ? errorClasses : ''}`}
                                             />
                                         ) : (
                                             <FormInput
                                                 label={label}
                                                 id={fieldId}
                                                 type="text"
-                                                className={`${ baseClasses } ${ isError ? errorClasses : '' } `}
+                                                className={`${baseClasses} ${isError ? errorClasses : ''}`}
                                                 value={value}
                                                 onChange={(e: any) => {
                                                     updateField(section, label, (e.target as any).value);
                                                     if (errors[fieldId]) setErrors(prev => ({ ...prev, [fieldId]: false }));
                                                 }}
-                                                placeholder={`Enter ${ label } `}
+                                                placeholder={`Enter ${label}`}
                                             />
                                         )}
                                     </div>
@@ -1105,7 +1105,7 @@ const Onboarding = () => {
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className={`${ isSaving ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-700 hover:bg-blue-800' } text - white font - bold px - 8 py - 4 rounded - xl shadow - lg shadow - blue - 200 hover: -translate - y - 1 transition - all duration - 300 text - lg flex items - center gap - 2`}
+                                className={`${isSaving ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-700 hover:bg-blue-800'} text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-blue-200 hover:-translate-y-1 transition-all duration-300 text-lg flex items-center gap-2`}
                             >
                                 {isSaving ? (
                                     <>
@@ -1146,22 +1146,22 @@ const Onboarding = () => {
                             <h4 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-4 pl-2">Select Agent</h4>
                             <button
                                 onClick={() => setActiveAgent('website')}
-                                className={`flex items - center gap - 3 p - 3 rounded - xl transition - all ${ activeAgent === 'website' ? 'bg-purple-100 border border-purple-200 text-purple-900 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm border border-transparent' } `}
+                                className={`flex items-center gap-3 p-3 rounded-xl transition-all ${activeAgent === 'website' ? 'bg-purple-100 border border-purple-200 text-purple-900 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm border border-transparent'}`}
                             >
-                                <div className={`w - 2.5 h - 2.5 rounded - full ${ activeAgent === 'website' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-gray-400' } `}></div>
+                                <div className={`w-2.5 h-2.5 rounded-full ${activeAgent === 'website' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-gray-400'}`}></div>
                                 <div className="text-left">
                                     <div className="font-bold text-sm">Website Chatbot</div>
-                                    <div className={`text - xs ${ activeAgent === 'website' ? 'text-purple-700' : 'text-gray-400' } `}>{activeAgent === 'website' ? 'Active' : 'Idle'}</div>
+                                    <div className={`text-xs ${activeAgent === 'website' ? 'text-purple-700' : 'text-gray-400'}`}>{activeAgent === 'website' ? 'Active' : 'Idle'}</div>
                                 </div>
                             </button>
                             <button
                                 onClick={() => setActiveAgent('missed_call')}
-                                className={`flex items - center gap - 3 p - 3 rounded - xl transition - all ${ activeAgent === 'missed_call' ? 'bg-purple-100 border border-purple-200 text-purple-900 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm border border-transparent' } `}
+                                className={`flex items-center gap-3 p-3 rounded-xl transition-all ${activeAgent === 'missed_call' ? 'bg-purple-100 border border-purple-200 text-purple-900 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm border border-transparent'}`}
                             >
-                                <div className={`w - 2.5 h - 2.5 rounded - full ${ activeAgent === 'missed_call' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-gray-400' } `}></div>
+                                <div className={`w-2.5 h-2.5 rounded-full ${activeAgent === 'missed_call' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-gray-400'}`}></div>
                                 <div className="text-left">
                                     <div className="font-bold text-sm">Missed Call AI</div>
-                                    <div className={`text - xs ${ activeAgent === 'missed_call' ? 'text-purple-700' : 'text-gray-400' } `}>{activeAgent === 'missed_call' ? 'Active' : 'Idle'}</div>
+                                    <div className={`text-xs ${activeAgent === 'missed_call' ? 'text-purple-700' : 'text-gray-400'}`}>{activeAgent === 'missed_call' ? 'Active' : 'Idle'}</div>
                                 </div>
                             </button>
                         </div>
@@ -1192,15 +1192,14 @@ const Onboarding = () => {
                             {/* Messages */}
                             <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative">
                                 {chatHistory.map((msg, i) => (
-                                    <div key={i} className={`flex ${ msg.role === 'user' ? 'justify-end' : 'justify-start' } `}>
+                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         {msg.role === 'assistant' && (
                                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-xs font-bold mr-3 mt-1 text-white shadow-md">AI</div>
                                         )}
-                                        <div className={`max - w - [80 %] rounded - 2xl p - 4 text - sm leading - relaxed shadow - sm ${
-            msg.role === 'user'
-            ? 'bg-purple-600 text-white rounded-br-sm'
-            : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
-        } `}
+                                        <div className={`max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm ${msg.role === 'user'
+                                            ? 'bg-purple-600 text-white rounded-br-sm'
+                                            : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
+                                            }`}
                                         >
                                             {msg.content}
                                         </div>
@@ -1268,11 +1267,10 @@ const Onboarding = () => {
                             <div className="mb-6 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                                 <div className="text-xs text-gray-400 font-bold uppercase mb-2 tracking-wider">Lifecycle Stage</div>
                                 <div className="flex flex-wrap gap-2">
-                                    <span className={`px - 3 py - 1.5 rounded - lg text - sm font - semibold w - full text - center border ${
-            (analysisResult?.status === 'Hot' || analysisResult?.status === 'Qualified' || analysisResult?.status === 'Appointment Scheduled')
-            ? 'bg-green-50 text-green-700 border-green-100'
-            : 'bg-gray-50 text-gray-600 border-gray-100'
-        } `}>
+                                    <span className={`px-3 py-1.5 rounded-lg text-sm font-semibold w-full text-center border ${(analysisResult?.status === 'Hot' || analysisResult?.status === 'Qualified' || analysisResult?.status === 'Appointment Scheduled')
+                                        ? 'bg-green-50 text-green-700 border-green-100'
+                                        : 'bg-gray-50 text-gray-600 border-gray-100'
+                                        }`}>
                                         {analysisResult?.status || 'Unknown'}
                                     </span>
                                 </div>
@@ -1283,11 +1281,10 @@ const Onboarding = () => {
                                 <div className="text-xs text-gray-400 font-bold uppercase mb-3 tracking-wider z-10 relative"> Lead Temp</div>
 
                                 <div className="flex items-end justify-between mb-2 relative z-10">
-                                    <span className={`text - 2xl font - black ${
-            (analysisResult?.lead_info?.classification === 'Hot' || analysisResult?.status === 'Hot') ? 'text-red-500' :
-            (analysisResult?.lead_info?.classification === 'Warm' || analysisResult?.status === 'Warm') ? 'text-orange-500' :
-                'text-blue-500'
-        } `}>
+                                    <span className={`text-2xl font-black ${(analysisResult?.lead_info?.classification === 'Hot' || analysisResult?.status === 'Hot') ? 'text-red-500' :
+                                        (analysisResult?.lead_info?.classification === 'Warm' || analysisResult?.status === 'Warm') ? 'text-orange-500' :
+                                            'text-blue-500'
+                                        }`}>
                                         {analysisResult?.lead_info?.classification || analysisResult?.temperature || 'Cold'}
                                     </span>
                                     <span className="text-3xl filter drop-shadow-sm">
@@ -1298,11 +1295,10 @@ const Onboarding = () => {
                                 </div>
 
                                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className={`h - full rounded - full transition - all duration - 700 ease - out shadow - sm ${
-            (analysisResult?.lead_info?.classification === 'Hot' || analysisResult?.status === 'Hot') ? 'bg-gradient-to-r from-orange-400 to-red-500 w-full' :
-            (analysisResult?.lead_info?.classification === 'Warm' || analysisResult?.status === 'Warm') ? 'bg-gradient-to-r from-yellow-400 to-orange-500 w-2/3' :
-                'bg-blue-400 w-1/3'
-        } `}></div>
+                                    <div className={`h-full rounded-full transition-all duration-700 ease-out shadow-sm ${(analysisResult?.lead_info?.classification === 'Hot' || analysisResult?.status === 'Hot') ? 'bg-gradient-to-r from-orange-400 to-red-500 w-full' :
+                                        (analysisResult?.lead_info?.classification === 'Warm' || analysisResult?.status === 'Warm') ? 'bg-gradient-to-r from-yellow-400 to-orange-500 w-2/3' :
+                                            'bg-blue-400 w-1/3'
+                                        }`}></div>
                                 </div>
                             </div>
 
@@ -1336,4 +1332,3 @@ const Onboarding = () => {
 };
 
 export default Onboarding;
-
