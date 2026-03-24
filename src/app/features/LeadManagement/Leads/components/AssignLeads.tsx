@@ -10,9 +10,10 @@ import { showNotification } from '@mantine/notifications';
 interface AssignLeadsProps {
     leadIds: number[];
     close: () => void;
+    onSuccess?: () => void;
 }
 
-function AssignLeads({ leadIds, close }: AssignLeadsProps) {
+function AssignLeads({ leadIds, close, onSuccess }: AssignLeadsProps) {
     const { data: usersData, isFetching: isUsersFetching } = useGetUsersQuery();
     const [assignLeads, { isLoading: isAssigning }] = useAssignLeadsMutation();
     const [selectedUser, setSelectedUser] = useState<string | null>(null);
@@ -35,6 +36,7 @@ function AssignLeads({ leadIds, close }: AssignLeadsProps) {
                 color: 'green',
             });
 
+            if (onSuccess) onSuccess();
             close(); // close modal on success
         } catch (err) {
             showNotification({

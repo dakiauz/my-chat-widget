@@ -23,34 +23,33 @@ import { CallLog, IConversation } from '../types';
 import { clearLeadData, setLeadData } from '@/app/slices/callLogsSlice';
 import { Plus } from 'lucide-react';
 
-function CreateNewCall({ callLog, variant, conversation }: { conversation?: IConversation; callLog?: CallLog; variant: 'callLogItem' | 'button' }) {
+function LeadForm({
+    callLog,
+    variant,
+    conversation,
+    close,
+    openNewLead,
+    openNewLeadList,
+    openedNewLead,
+    openedNewLeadList,
+    closeNewLead,
+    closeNewLeadList,
+}: {
+    callLog?: CallLog;
+    variant: 'callLogItem' | 'button';
+    conversation?: IConversation;
+    close: () => void;
+    openNewLead: () => void;
+    openNewLeadList: () => void;
+    openedNewLead: boolean;
+    openedNewLeadList: boolean;
+    closeNewLead: () => void;
+    closeNewLeadList: () => void;
+}) {
     const dispatch = useDispatch();
-    const validation = useFormik({
-        enableReinitialize: true,
-        initialValues: {
-            leadListId: null,
-            leadId: null,
-            name: '',
-        },
-        validationSchema: Yup.object({
-            leadId: Yup.number().nullable().required('Lead is required').min(1, 'Please select a lead'),
-            name: Yup.string(),
-        }),
-        onSubmit: async (values, { resetForm }) => {
-            const formData = {
-                leadId: values.leadId ?? -1,
-                name: values.name,
-            };
-            dispatch(setNumber(leadOptions.find((lead) => lead.value === formData.leadId.toString())?.description || ''));
-            dispatch(setDialerOpen(true));
-            close();
-            resetForm();
-        },
-    });
 
     const { data: callsData, isLoading: callsLoading } = useGetCallContactsQuery();
     const { data: leadsData, isLoading: leadsLoading } = useGetLeadsQuery();
-
     const { data: leadListData, isLoading: leadListLoading } = useGetLeadsListQuery();
 
     const leadListOptions = useMemo(
@@ -95,9 +94,44 @@ function CreateNewCall({ callLog, variant, conversation }: { conversation?: ICon
         ];
     }, [leadsData, callsData]);
 
-    const [opened, { open, close }] = useDisclosure(false);
-    const [openedNewLead, { open: openNewLead, close: closeNewLead }] = useDisclosure(false);
-    const [openedNewLeadList, { open: openNewLeadList, close: closeNewLeadList }] = useDisclosure(false);
+    const prefillLeadData = () => {
+        if (callLog) {
+            dispatch(setLeadData({ phone: callLog.phone || null }));
+        }
+
+        if (conversation) {
+            dispatch(
+                setLeadData({
+                    phone: conversation?.client_phone_number || null,
+                    email: conversation?.client_email || null,
+                    name: conversation?.client_name || null,
+                })
+            );
+        }
+    };
+
+    const validation = useFormik({
+        enableReinitialize: true,
+        initialValues: {
+            leadListId: null,
+            leadId: null,
+            name: '',
+        },
+        validationSchema: Yup.object({
+            leadId: Yup.number().nullable().required('Lead is required').min(1, 'Please select a lead'),
+            name: Yup.string(),
+        }),
+        onSubmit: async (values, { resetForm }) => {
+            const formData = {
+                leadId: values.leadId ?? -1,
+                name: values.name,
+            };
+            dispatch(setNumber(leadOptions.find((lead) => lead.value === formData.leadId.toString())?.description || ''));
+            dispatch(setDialerOpen(true));
+            close();
+            resetForm();
+        },
+    });
 
     useEffect(() => {
         if (validation.values.leadId == -1) {
@@ -112,30 +146,6 @@ function CreateNewCall({ callLog, variant, conversation }: { conversation?: ICon
             validation.setFieldValue('leadListId', null);
         }
     }, [validation.values.leadListId]);
-
-    useEffect(() => {
-        if (!openedNewLead) {
-            dispatch(clearLeadData());
-        }
-    }, [openedNewLead]);
-
-    const prefillLeadData = () => {
-        if (callLog) {
-            // Source: Call Log (only phone likely)
-            dispatch(setLeadData({ phone: callLog.phone || null }));
-        }
-
-        if (conversation) {
-            // Conversation may include multiple fields
-            dispatch(
-                setLeadData({
-                    phone: conversation?.client_phone_number || null,
-                    email: conversation?.client_email || null,
-                    name: conversation?.client_name || null,
-                })
-            );
-        }
-    };
 
     const SelectItem = forwardRef<HTMLDivElement, ItemProps>(({ label, description, icon, ...others }: ItemProps, ref) => (
         <div ref={ref} {...others}>
@@ -155,7 +165,7 @@ function CreateNewCall({ callLog, variant, conversation }: { conversation?: ICon
 
     return (
         <>
-            <Modal isOpen={opened && !openedNewLead && !openedNewLeadList} close={close}>
+            <Modal isOpen={!openedNewLead && !openedNewLeadList} close={close}>
                 <ModalHeader title="New Lead" />
                 <ModalBody>
                     <Box pos={'relative'}>
@@ -239,10 +249,43 @@ function CreateNewCall({ callLog, variant, conversation }: { conversation?: ICon
                 <ModalHeader title="Add New Lead List" />
                 <ModalBody>{<AddLeadListBody close={closeNewLeadList} />}</ModalBody>
             </Modal>
+        </>
+    );
+}
+
+function CreateNewCall({ callLog, variant, conversation }: { conversation?: IConversation; callLog?: CallLog; variant: 'callLogItem' | 'button' }) {
+    const dispatch = useDispatch();
+
+    const [opened, { open, close }] = useDisclosure(false);
+    const [openedNewLead, { open: openNewLead, close: closeNewLead }] = useDisclosure(false);
+    const [openedNewLeadList, { open: openNewLeadList, close: closeNewLeadList }] = useDisclosure(false);
+
+    useEffect(() => {
+        if (!openedNewLead) {
+            dispatch(clearLeadData());
+        }
+    }, [openedNewLead, dispatch]);
+
+    return (
+        <>
+            {opened && (
+                <LeadForm
+                    callLog={callLog}
+                    variant={variant}
+                    conversation={conversation}
+                    close={close}
+                    openNewLead={openNewLead}
+                    openNewLeadList={openNewLeadList}
+                    openedNewLead={openedNewLead}
+                    openedNewLeadList={openedNewLeadList}
+                    closeNewLead={closeNewLead}
+                    closeNewLeadList={closeNewLeadList}
+                />
+            )}
 
             {variant === 'button' && (
-                <button onClick={open} disabled={callsLoading} className="flex basis-28 sm:basis-44 justify-center  rounded-md bg-primary  py-2 text-sm font-medium text-white">
-                    {leadsLoading ? 'Loading Leads...' : 'Create New'}
+                <button onClick={open} className="flex basis-28 sm:basis-44 justify-center  rounded-md bg-primary  py-2 text-sm font-medium text-white">
+                    Create New
                 </button>
             )}
 

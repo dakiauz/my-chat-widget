@@ -269,6 +269,7 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                 color: 'green',
             });
             setIsBulkDeleteModalOpen(false);
+            setSelectedRows([]);
         } catch (error) {
             showNotification({
                 title: 'Error',
@@ -329,12 +330,13 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                     headerTitle="Assign Leads"
                     isOpen={isAssignModalOpen}
                     close={() => setIsAssignModalOpen(false)}
-                    body={<AssignLeads leadIds={selectedRows.map((row) => row.id)} close={() => setIsAssignModalOpen(false)} />}
+                    body={<AssignLeads leadIds={selectedRows.map((row) => row.id)} close={() => setIsAssignModalOpen(false)} onSuccess={() => setSelectedRows([])} />}
                 />
                 <BulkMessageModal
                     isOpen={isBulkMessageModalOpen}
                     close={() => setIsBulkMessageModalOpen(false)}
                     selectedLeads={selectedRows}
+                    onSuccess={() => setSelectedRows([])}
                 />
                 <ModalWrapper
                     headerTitle="Start Power Dialer"
@@ -576,6 +578,7 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                 additionalMenuItems={additionalMenuItems}
                 minHeight={400}
                 onSelectionChange={(rows) => setSelectedRows(rows)}
+                selection={selectedRows}
             />
 
             <Drawer className="" position="right" opened={drawerOpened} onClose={closeDrawer} padding="xl" size="xl">

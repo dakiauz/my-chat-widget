@@ -9,9 +9,10 @@ interface BulkMessageModalProps {
     isOpen: boolean;
     close: () => void;
     selectedLeads: ILead[];
+    onSuccess?: () => void;
 }
 
-const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLeads }) => {
+const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLeads, onSuccess }) => {
     const [emailSubject, setEmailSubject] = useState('');
     const [emailBody, setEmailBody] = useState('');
     const [smsBody, setSmsBody] = useState('');
@@ -84,6 +85,7 @@ const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLe
             }
 
             showNotification({ title: 'Success', message, color: 'green' });
+            if (onSuccess) onSuccess();
             handleClose();
         } catch (error: any) {
             showNotification({

@@ -62,8 +62,8 @@ interface UsersTable {
     rightSide?: () => JSX.Element;
     filterBody?: React.ReactElement;
     additionalMenuItems?: (row: any) => ReactNode;
-    callRowAction?: (row: any) => ReactNode;
     onSelectionChange?: (selectedRecords: any[]) => void;
+    selection?: any[];
 }
 
 const AsyncDataTable = (props: UsersTable) => {
@@ -97,7 +97,6 @@ const AsyncDataTable = (props: UsersTable) => {
         rightSide,
         filterBody,
         additionalMenuItems,
-        callRowAction,
         ...modalProps
     } = props;
 
@@ -109,8 +108,8 @@ const AsyncDataTable = (props: UsersTable) => {
 
     const [search, setSearch] = useState('');
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: initalSortAccessor ?? 'created_at',
-        direction: 'desc',
+        columnAccessor: initalSortAccessor ?? '',
+        direction: 'asc',
     });
 
     const handleRowSelection = (selectedRows: any[]) => {
@@ -149,7 +148,39 @@ const AsyncDataTable = (props: UsersTable) => {
         setRecordsData(records);
     }, [page, pageSize, initialRecords]);
 
+    useEffect(() => {
+        const sortedData = sortBy(initialRecords, sortStatus.columnAccessor);
+        setInitialRecords(sortStatus.direction === 'desc' ? sortedData.reverse() : sortedData);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sortStatus, data]);
 
+    useEffect(() => {
+        setInitialRecords(() => {
+            return data.filter((item: any) => {
+                const keys = Object.keys(item) as (keyof any)[];
+                return (
+                    keys.filter((key) => {
+                        if (key == 'permission') {
+                            return item.permission.toString().toLowerCase().includes(search.toLowerCase());
+                        } else if (key === 'roles') {
+                            if (!item.roles[0]) return;
+                            // Handle 'roles' key separately
+                            return item.roles[0].name.toString().toLowerCase().includes(search.toLowerCase());
+                        } else {
+                            const value = item[key];
+                            if (!value) return false;
+                            // Ensure the value is a string before calling .toString()
+                            if (typeof value === 'number' || typeof value === 'string') {
+                                return value.toString().toLowerCase().includes(search.toLowerCase());
+                            }
+                            return false;
+                        }
+                    }).length > 0
+                );
+            });
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search, data]);
 
     const actionsColumn = {
         accessor: 'action',
@@ -247,40 +278,6 @@ const AsyncDataTable = (props: UsersTable) => {
         };
     }, [data, initialRecords]);
 
-    const editActionColumn = useMemo(() => {
-        return {
-            accessor: 'editAction',
-            title: ' ',
-            titleClassName: '!text-center',
-            sortable: false,
-            width: callRowAction ? 80 : 40,
-            render: (row: any) => {
-                if ((!editPermission || (restrictAdminRow && row.id == 1)) && !callRowAction) return <></>;
-                return (
-                    <div className="flex justify-center items-center h-full gap-2">
-                        {editPermission && !(restrictAdminRow && row.id == 1) && (
-                            <Tooltip content="Edit">
-                                <button
-                                    type="button"
-                                    className="hover-ring text-blue-500 hover:text-blue-700"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSetSelectedData(row);
-                                        if (edit) edit(row.id);
-                                        else if (modalProps.EditBody) crudModalRef.current?.openEdit();
-                                    }}
-                                >
-                                    <IconPencil />
-                                </button>
-                            </Tooltip>
-                        )}
-                        {callRowAction && callRowAction(row)}
-                    </div>
-                );
-            }
-        };
-    }, [editPermission, restrictAdminRow, edit, modalProps.EditBody, callRowAction]);
-
     const menuAction = useMemo(() => {
         return {
             accessor: 'action',
@@ -345,7 +342,6 @@ const AsyncDataTable = (props: UsersTable) => {
 
     const compiledColumns = useMemo(() => {
         const newColumns = [...columns];
-        if (editPermission) newColumns.unshift(editActionColumn);
         if (serial) newColumns.unshift(serialColumn);
         if (modalProps.PermissionBody) newColumns.push(permissionColumn);
         if (actions && (editPermission || deletePermission)) newColumns.push(actionsColumn);
@@ -367,42 +363,53 @@ const AsyncDataTable = (props: UsersTable) => {
     const col = columns.map((c) => c.accessor);
     const header = columns.map((c) => c.title);
 
-    //Modals States
     const crudModalRef = useRef<CrudModalHandles>(null);
 
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
+    const [selectAllPages, setSelectAllPages] = useState(false);
 
     useEffect(() => {
         if (props.onSelectionChange) {
             props.onSelectionChange(selectedRecords);
         }
+        if (selectedRecords.length === 0) {
+            setSelectAllPages(false);
+        }
     }, [selectedRecords]);
 
     useEffect(() => {
-        let filtered = data;
+        if (props.selection !== undefined) {
+            setSelectedRecords(props.selection);
+        }
+    }, [props.selection]);
 
-        if (search.trim()) {
-            const keywords = search.toLowerCase().split(' ').filter(Boolean);
+    const isEntirePageSelected = selectedRecords.length > 0 && selectedRecords.length === recordsData.length && initialRecords.length > recordsData.length && !selectAllPages;
 
-            filtered = data.filter((row: any) => {
-                let rowSearchString = '';
-
-                compiledColumns.forEach((col: any) => {
-                    const keys = col.searchKeys ?? [col.accessor];
-
-                    keys.forEach((key: string) => {
-                        const value = get(row, key);
-                        if (value) rowSearchString += ' ' + value.toString().toLowerCase();
-                    });
-                });
-
-                return keywords.every((keyword) => rowSearchString.includes(keyword));
-            });
+    useEffect(() => {
+        if (!search.trim()) {
+            setInitialRecords(data);
+            return;
         }
 
-        const sortedData = sortBy(filtered, sortStatus.columnAccessor);
-        setInitialRecords(sortStatus.direction === 'desc' ? sortedData.reverse() : sortedData);
-    }, [search, data, compiledColumns, sortStatus]);
+        const keywords = search.toLowerCase().split(' ').filter(Boolean);
+
+        const filtered = data.filter((row: any) => {
+            let rowSearchString = '';
+
+            compiledColumns.forEach((col: any) => {
+                const keys = col.searchKeys ?? [col.accessor];
+
+                keys.forEach((key: string) => {
+                    const value = get(row, key);
+                    if (value) rowSearchString += ' ' + value.toString().toLowerCase();
+                });
+            });
+
+            return keywords.every((keyword) => rowSearchString.includes(keyword));
+        });
+
+        setInitialRecords(filtered);
+    }, [search, data, compiledColumns]);
 
     useEffect(() => {
         setPage(1);
@@ -540,6 +547,34 @@ const AsyncDataTable = (props: UsersTable) => {
                             </div>
 
                             <div className=" datatables bg-white rounded-lg rounded-t-none">
+                                {isEntirePageSelected && (
+                                    <div className="bg-blue-50 border-b border-blue-100 text-blue-800 px-4 py-2.5 text-sm flex justify-center items-center w-full">
+                                        <span>All <strong>{selectedRecords.length}</strong> leads on this page are selected.</span>
+                                        <button
+                                            onClick={() => {
+                                                setSelectAllPages(true);
+                                                setSelectedRecords(initialRecords);
+                                            }}
+                                            className="ml-2 text-blue-600 font-semibold hover:underline"
+                                        >
+                                            Click here to select all {initialRecords.length} leads in this list.
+                                        </button>
+                                    </div>
+                                )}
+                                {selectAllPages && (
+                                    <div className="bg-blue-50 border-b border-blue-100 text-blue-800 px-4 py-2.5 text-sm flex justify-center items-center w-full">
+                                        <span>All <strong>{initialRecords.length}</strong> leads are selected.</span>
+                                        <button
+                                            onClick={() => {
+                                                setSelectAllPages(false);
+                                                setSelectedRecords([]);
+                                            }}
+                                            className="ml-2 text-blue-600 font-semibold hover:underline"
+                                        >
+                                            Clear selection
+                                        </button>
+                                    </div>
+                                )}
                                 <DataTable
                                     fetching={fetching}
                                     textSelectionDisabled

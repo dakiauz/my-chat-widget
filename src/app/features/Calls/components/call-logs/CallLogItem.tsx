@@ -176,9 +176,12 @@ export const CallLogItem = ({ callLog, onCallBack }: CallLogItemProps) => {
                 </div>
 
                 <div className={`w-full mt-2 ${isActive ? 'max-h-[200px]' : 'max-h-0'} overflow-hidden transiton-[max-height] duration-300 ease-in-out`}>
-                    {isActive && <TwilioAudioPlayer recording={callLog.recording} userName={socialsData?.socails?.twilio?.accountSid || ''} password={socialsData?.socails?.twilio?.authToken || ''} />}
-                    {/* TranscriptButton */}
-                    <TranscriptModal callLog={callLog} />
+                    {isActive && (
+                        <>
+                            <TwilioAudioPlayer recording={callLog.recording} userName={socialsData?.socails?.twilio?.accountSid || ''} password={socialsData?.socails?.twilio?.authToken || ''} />
+                            <TranscriptModal callLog={callLog} />
+                        </>
+                    )}
                 </div>
             </div>
         </div>

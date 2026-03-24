@@ -77,7 +77,7 @@ const CallLogsSection = React.memo(({ callLogs, onCallBack }: CallLogsSectionPro
                 <motion.div layout>
                     {filteredLogs.length > 0 ? (
                         filteredLogs.map((callLog, index: number) => (
-                            <motion.div key={`${callLog.id}-${index}`} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}>
+                            <motion.div key={callLog.id || index} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}>
                                 <CallLogItem callLog={callLog} onCallBack={onCallBack} />
                             </motion.div>
                         ))
