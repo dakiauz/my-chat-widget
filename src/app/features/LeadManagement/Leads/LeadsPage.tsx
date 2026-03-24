@@ -263,6 +263,7 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
 
         try {
             const response = await deleteLeads(payload).unwrap();
+            console.log('[DEBUG] LeadsPage: bulk delete leads success');
             showNotification({
                 title: 'Success',
                 message: 'Leads deleted successfully',
@@ -330,13 +331,19 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                     headerTitle="Assign Leads"
                     isOpen={isAssignModalOpen}
                     close={() => setIsAssignModalOpen(false)}
-                    body={<AssignLeads leadIds={selectedRows.map((row) => row.id)} close={() => setIsAssignModalOpen(false)} onSuccess={() => setSelectedRows([])} />}
+                    body={<AssignLeads leadIds={selectedRows.map((row) => row.id)} close={() => setIsAssignModalOpen(false)} onSuccess={() => {
+                        console.log('[DEBUG] LeadsPage: AssignLeads onSuccess callback triggered');
+                        setSelectedRows([]);
+                    }} />}
                 />
                 <BulkMessageModal
                     isOpen={isBulkMessageModalOpen}
                     close={() => setIsBulkMessageModalOpen(false)}
                     selectedLeads={selectedRows}
-                    onSuccess={() => setSelectedRows([])}
+                    onSuccess={() => {
+                        console.log('[DEBUG] LeadsPage: BulkMessageModal onSuccess callback triggered');
+                        setSelectedRows([]);
+                    }}
                 />
                 <ModalWrapper
                     headerTitle="Start Power Dialer"
@@ -577,7 +584,10 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                 filterBody={filterBody}
                 additionalMenuItems={additionalMenuItems}
                 minHeight={400}
-                onSelectionChange={(rows) => setSelectedRows(rows)}
+                onSelectionChange={(rows) => {
+                    console.log('[DEBUG] LeadsPage: onSelectionChange count:', rows.length);
+                    setSelectedRows(rows);
+                }}
                 selection={selectedRows}
             />
 

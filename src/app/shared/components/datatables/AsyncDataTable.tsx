@@ -370,6 +370,7 @@ const AsyncDataTable = (props: UsersTable) => {
 
     useEffect(() => {
         if (props.onSelectionChange) {
+            console.log('[DEBUG] AsyncDataTable: triggering onSelectionChange', selectedRecords.length);
             props.onSelectionChange(selectedRecords);
         }
         if (selectedRecords.length === 0) {
@@ -379,6 +380,7 @@ const AsyncDataTable = (props: UsersTable) => {
 
     useEffect(() => {
         if (props.selection !== undefined) {
+            console.log('[DEBUG] AsyncDataTable: props.selection updated', props.selection.length);
             setSelectedRecords(props.selection);
         }
     }, [props.selection]);
@@ -552,6 +554,7 @@ const AsyncDataTable = (props: UsersTable) => {
                                         <span>All <strong>{selectedRecords.length}</strong> leads on this page are selected.</span>
                                         <button
                                             onClick={() => {
+                                                console.log('[DEBUG] AsyncDataTable: SelectAllPages clicked');
                                                 setSelectAllPages(true);
                                                 setSelectedRecords(initialRecords);
                                             }}
@@ -596,7 +599,10 @@ const AsyncDataTable = (props: UsersTable) => {
                                         if (props.handleRowClick) props.handleRowClick(row);
                                     }}
                                     selectedRecords={selectedRecords}
-                                    onSelectedRecordsChange={setSelectedRecords}
+                                    onSelectedRecordsChange={(recs) => {
+                                        console.log('[DEBUG] AsyncDataTable: DataTable onSelectedRecordsChange', recs.length);
+                                        setSelectedRecords(recs);
+                                    }}
                                 />
                             </div>
                         </>
