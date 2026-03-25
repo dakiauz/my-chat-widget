@@ -20,7 +20,7 @@ const Welcome = () => {
             </div>
             <div className="font-semibold dark:text-white">
                 {/* <h2 className="text-3xl font-bold text-black lg:text-5xl xl:text-6xl">Welcome to Clear Eats</h2> */}
-                <h4 className="mb-7 text-xl sm:text-2xl">Welcome V2</h4>
+                <h4 className="mb-7 text-xl sm:text-2xl">Welcome V3_ Testing</h4>
                 <p className="text-base">
                     <br className="hidden sm:block" />
                     <br />
