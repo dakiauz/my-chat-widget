@@ -85,7 +85,6 @@ const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLe
             }
 
             showNotification({ title: 'Success', message, color: 'green' });
-            console.log('[DEBUG] BulkMessageModal: bulk message success');
             if (onSuccess) onSuccess();
             handleClose();
         } catch (error: any) {

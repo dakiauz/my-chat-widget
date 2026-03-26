@@ -30,7 +30,6 @@ function AssignLeads({ leadIds, close, onSuccess }: AssignLeadsProps) {
                 userId: Number(selectedUser),
                 leadIds,
             }).unwrap();
-            console.log('[DEBUG] AssignLeads: assign success');
             showNotification({
                 title: 'Success',
                 message: 'Leads Assigned successfully',

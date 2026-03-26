@@ -1,4 +1,4 @@
-import { Badge, Box, Drawer, Loader, LoadingOverlay, Select, Text, MultiSelect, Menu, Button } from '@mantine/core';
+import { Badge, Box, Drawer, Loader, LoadingOverlay, Select, Text, MultiSelect, Menu, Button, NumberInput } from '@mantine/core';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -116,6 +116,7 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
     const deletePermission = auth?.user?.roles?.some((role) => role.permissions?.some((p) => p.name === 'Delete Lead'));
     const fbConnectPermission = auth?.user?.roles?.some((role) => role.permissions?.some((p) => p.name === 'Connect Facebook Forms'));
     const viewKanbanStatus = auth?.user?.roles?.some((role) => role.permissions?.some((p) => p.name === 'View Kanban status'));
+    const assignLeadListPermission = auth?.user?.roles?.some((role) => role.permissions?.some((p) => p.name === 'Assign Lead List'));
 
     const [importLead] = useImportLeadMutation();
     const importSubmit = async (data: any): Promise<any> => {
@@ -140,6 +141,7 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
 
     const [isVoicemailModalOpen, setIsVoicemailModalOpen] = useState(false);
     const [selectedVoicemailDropId, setSelectedVoicemailDropId] = useState<number | null>(null);
+    const [timeoutSeconds, setTimeoutSeconds] = useState<number | undefined>(30);
     const { data: voicemailDrops } = useGetVoicemailDropsQuery();
 
     const handleStartPowerDialerPrompt = () => {
@@ -151,7 +153,8 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
         setIsVoicemailModalOpen(false);
         if (!selectedLeadList || selectedLeadList === 'all') return;
         try {
-            const res = await startPowerDialer({ lead_list_id: +selectedLeadList, voicemail_drop_id: selectedVoicemailDropId }).unwrap();
+            const timeout = timeoutSeconds === undefined ? 30 : timeoutSeconds;
+            const res = await startPowerDialer({ lead_list_id: +selectedLeadList, voicemail_drop_id: selectedVoicemailDropId, timeout_seconds: timeout }).unwrap();
 
             showNotification({
                 title: 'Power Dialer Started',
@@ -263,7 +266,6 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
 
         try {
             const response = await deleteLeads(payload).unwrap();
-            console.log('[DEBUG] LeadsPage: bulk delete leads success');
             showNotification({
                 title: 'Success',
                 message: 'Leads deleted successfully',
@@ -311,9 +313,22 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                             <Menu.Item onClick={() => setIsBulkMessageModalOpen(true)}>
                                 Send Message
                             </Menu.Item>
-                            <Menu.Item onClick={() => setIsAssignModalOpen(true)}>
-                                Assign Leads
-                            </Menu.Item>
+                            {!assignLeadListPermission ? (
+                                <Tooltip content="Permission Denied. Ask the owner to assign you this permission.">
+                                    <div style={{ display: 'inline-block', width: '100%' }}>
+                                        <Menu.Item
+                                            onClick={() => { }}
+                                            disabled={true}
+                                        >
+                                            Assign Leads
+                                        </Menu.Item>
+                                    </div>
+                                </Tooltip>
+                            ) : (
+                                <Menu.Item onClick={() => setIsAssignModalOpen(true)}>
+                                    Assign Leads
+                                </Menu.Item>
+                            )}
                             <Menu.Divider />
                             <Menu.Item color="red" onClick={handleBulkDelete}>
                                 Delete Leads
@@ -331,19 +346,13 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                     headerTitle="Assign Leads"
                     isOpen={isAssignModalOpen}
                     close={() => setIsAssignModalOpen(false)}
-                    body={<AssignLeads leadIds={selectedRows.map((row) => row.id)} close={() => setIsAssignModalOpen(false)} onSuccess={() => {
-                        console.log('[DEBUG] LeadsPage: AssignLeads onSuccess callback triggered');
-                        setSelectedRows([]);
-                    }} />}
+                    body={<AssignLeads leadIds={selectedRows.map((row) => row.id)} close={() => setIsAssignModalOpen(false)} onSuccess={() => setSelectedRows([])} />}
                 />
                 <BulkMessageModal
                     isOpen={isBulkMessageModalOpen}
                     close={() => setIsBulkMessageModalOpen(false)}
                     selectedLeads={selectedRows}
-                    onSuccess={() => {
-                        console.log('[DEBUG] LeadsPage: BulkMessageModal onSuccess callback triggered');
-                        setSelectedRows([]);
-                    }}
+                    onSuccess={() => setSelectedRows([])}
                 />
                 <ModalWrapper
                     headerTitle="Start Power Dialer"
@@ -357,7 +366,15 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                                 data={[{ value: '', label: 'None' }, ...(voicemailDrops?.data?.map(d => ({ value: d.id.toString(), label: d.name })) || [])]}
                                 value={selectedVoicemailDropId?.toString() || ''}
                                 onChange={(val) => setSelectedVoicemailDropId(val ? parseInt(val) : null)}
-                                clearable
+                            />
+
+                            <Text size="sm" className="mt-2">Dialing Timeout (Seconds)</Text>
+                            <NumberInput
+                                placeholder="30"
+                                value={timeoutSeconds}
+                                onChange={setTimeoutSeconds}
+                                min={10}
+                                max={60}
                             />
                             <div className="flex justify-end gap-2 mt-4">
                                 <Button variant="outline" color="red" onClick={() => setIsVoicemailModalOpen(false)}>Cancel</Button>
@@ -584,10 +601,7 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                 filterBody={filterBody}
                 additionalMenuItems={additionalMenuItems}
                 minHeight={400}
-                onSelectionChange={(rows) => {
-                    console.log('[DEBUG] LeadsPage: onSelectionChange count:', rows.length);
-                    setSelectedRows(rows);
-                }}
+                onSelectionChange={(rows) => setSelectedRows(rows)}
                 selection={selectedRows}
             />
 

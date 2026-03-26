@@ -267,7 +267,7 @@ export const twilioApiSlice = baseApi.injectEndpoints({
             }),
         }),
         // --- Power Dialer Endpoints ---
-        startPowerDialer: builder.mutation<{ success: boolean; message: string; queued_count: number }, { lead_list_id: number; voicemail_drop_id?: number | null }>({
+        startPowerDialer: builder.mutation<{ success: boolean; message: string; queued_count: number }, { lead_list_id: number; voicemail_drop_id?: number | null; timeout_seconds?: number | null }>({
             query: (body) => ({
                 url: '/power-dialer/start',
                 method: 'POST',

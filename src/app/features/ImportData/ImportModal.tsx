@@ -2,7 +2,7 @@ import { Input, Select } from '@mantine/core';
 import Modal from '../../shared/components/ui/modals/modal/Modal';
 import ModalBody from '../../shared/components/ui/modals/modal/ModalBody';
 import ModalHeader from '../../shared/components/ui/modals/modal/ModalHeader';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { IRootState } from '@/app/store';
 import { useParams } from 'react-router-dom';
@@ -62,13 +62,7 @@ function ImportModal({ opened, close, title, open }: ImportModalProps) {
     };
 
     const validateMapping = (): string | null => {
-        const requiredFields = ['mail', 'phone'];
-        for (let field of requiredFields) {
-            if (!mapping[field] || mapping[field].trim() === '') {
-                return `The field "${toHumanLabel(field)}" is required.`;
-            }
-        }
-        return null;
+        return null; // Disabled mandatory Email & Phone validation
     };
 
     const toHumanLabel = (field: string) => {
@@ -223,7 +217,6 @@ function ImportModal({ opened, close, title, open }: ImportModalProps) {
                                 <div key={key} className="flex flex-col gap-2">
                                     <label className="font-semibold text-gray-700 text-sm">
                                         {label}
-                                        {(key === 'mail' || key === 'phone') && <span className="text-red-500 ml-1">*</span>}
                                     </label>
 
                                     <div className="flex items-center gap-2">
@@ -231,7 +224,7 @@ function ImportModal({ opened, close, title, open }: ImportModalProps) {
                                             className="w-full"
                                             placeholder="Type or select a field"
                                             value={mapping[key] || ''}
-                                            required={key === 'mail' || key === 'phone'}
+                                            required={false}
                                             onChange={(e) => handleMappingChange(key, e.target.value)}
                                             classNames={{
                                                 input: 'bg-gray-100/70 border-none rounded-xl focus:ring-primary focus:ring-2 focus:ring-offset-0 !text-ssm font-semibold text-gray-800/90 placeholder:text-white-dark p-5',

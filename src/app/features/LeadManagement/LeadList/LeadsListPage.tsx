@@ -1,4 +1,6 @@
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useState, useMemo } from 'react';
+import { Select, Text, Badge } from '@mantine/core';
+import { useGetUsersQuery } from '@/app/features/User Management/Users/services/usersApi';
 import { useDispatch, useSelector } from 'react-redux';
 import { setPageTitle } from '../../../../_theme/themeConfigSlice';
 import AsyncDataTable from '../../../shared/components/datatables/AsyncDataTable';
@@ -46,6 +48,51 @@ const LeadsListPage: FC<ILeadsPageProps> = ({ data, fetching }) => {
     }, [data, selectedId]);
 
     const user = useSelector((state: IRootState) => state.auth.user);
+    const isOwner = user?.roles?.some((role: any) => role.name === 'owner');
+
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+    const { data: usersData, isFetching: isUsersFetching } = useGetUsersQuery(undefined, { skip: !isOwner });
+
+    const usersOptions = useMemo(() => {
+        if (!usersData?.data?.users) return [];
+        return usersData.data.users.map((u: any) => ({
+            value: String(u.id),
+            label: u.name,
+        }));
+    }, [usersData]);
+
+    const filteredData = useMemo(() => {
+        if (!data) return [];
+        if (isOwner && selectedUserId) {
+            return data.filter((item: any) => item.user_id?.toString() === selectedUserId || item.user?.id?.toString() === selectedUserId);
+        }
+        return data;
+    }, [data, isOwner, selectedUserId]);
+
+    const filterBody = isOwner ? (
+        <div className="flex flex-col flex-grow p-4 gap-4">
+            <Text size="sm" fw={500} className="mb-2">
+                Filter Options
+            </Text>
+            <div>
+                <Text size="xs" className="mb-1 text-gray-600">
+                    Sub User
+                </Text>
+                <Select
+                    placeholder="Filter by Sub User"
+                    data={usersOptions}
+                    value={selectedUserId}
+                    onChange={setSelectedUserId}
+                    searchable
+                    clearable
+                    nothingFound="No users found"
+                    size="sm"
+                    disabled={isUsersFetching}
+                />
+            </div>
+        </div>
+    ) : undefined;
 
     // Permissions
     const addPermission = user?.roles?.some((role) => {
@@ -92,6 +139,20 @@ const LeadsListPage: FC<ILeadsPageProps> = ({ data, fetching }) => {
                 </Tooltip>
             ),
         },
+        ...(isOwner
+            ? [
+                {
+                    title: 'Creator',
+                    accessor: 'user.name',
+                    sortable: true,
+                    render: (row: any) => (
+                        <Badge variant="light" color="blue">
+                            {row.user?.name || 'Company Owner'}
+                        </Badge>
+                    ),
+                },
+            ]
+            : []),
     ];
 
     // Modal functions
@@ -122,7 +183,8 @@ const LeadsListPage: FC<ILeadsPageProps> = ({ data, fetching }) => {
                 title="Leads List"
                 modalTitle="Lead List"
                 columns={columns}
-                data={data ?? []}
+                data={filteredData ?? []}
+                filterBody={filterBody}
                 handleSetSelectedData={handleSetSelectedData}
                 addTitle={'Add Lead'}
                 fetching={fetching}
