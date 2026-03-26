@@ -52,6 +52,7 @@ interface UsersTable {
     className?: string;
     leftSide?: () => JSX.Element;
     rightSide?: () => JSX.Element;
+    transferUser?: (id: number) => void;
 }
 
 const Table2 = (props: UsersTable) => {
@@ -132,23 +133,24 @@ const Table2 = (props: UsersTable) => {
     const [renderColumns, setRenderColumns] = useState(columns);
 
     useEffect(() => {
+        const query = search.toLowerCase();
         setInitialRecords(() => {
             return data.filter((item: any) => {
                 const keys = Object.keys(item) as (keyof any)[];
                 return (
                     keys.filter((key) => {
                         if (key == 'permission') {
-                            return item.permission.toString().toLowerCase().includes(search.toLowerCase());
+                            return item.permission.toString().toLowerCase().includes(query);
                         } else if (key === 'city') {
                             if (!item.city) return;
                             // Handle 'city' key separately
-                            return item.city?.state?.name.toString().toLowerCase().includes(search.toLowerCase()) ?? item.city.name.toString().toLowerCase().includes(search.toLowerCase());
+                            return item.city?.state?.name.toString().toLowerCase().includes(query) ?? item.city.name.toString().toLowerCase().includes(query);
                         } else {
                             const value = item[key];
                             if (!value) return false;
                             // Ensure the value is a string before calling .toString()
                             if (typeof value === 'number' || typeof value === 'string') {
-                                return value.toString().toLowerCase().includes(search.toLowerCase());
+                                return value.toString().toLowerCase().includes(query);
                             }
                             return false;
                         }
@@ -167,6 +169,21 @@ const Table2 = (props: UsersTable) => {
             sortable: false,
             render: (row: any) => (
                 <div className="flex items-center w-max mx-auto gap-2">
+                    {props.transferUser && (
+                        <Tooltip content="Transfer Data">
+                            <button
+                                type="button"
+                                className="hover-ring"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSetSelectedData(row);
+                                    if (props.transferUser) props.transferUser(row.id);
+                                }}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-right-left"><path d="m16 3 4 4-4 4" /><path d="M20 7H4" /><path d="m8 21-4-4 4-4" /><path d="M4 17h16" /></svg>
+                            </button>
+                        </Tooltip>
+                    )}
                     {view ? (
                         <Tooltip content="View">
                             <button
