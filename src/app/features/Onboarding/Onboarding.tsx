@@ -120,7 +120,7 @@ const Onboarding = () => {
 
                 try {
                     console.log(`Fetching history for: ${activeAgent} (Company: ${user?.company_id})`);
-                    const res = await axios.get('http://localhost:8000/api/demo/history', {
+                    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/demo/history`, {
                         params: { type: activeAgent },
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
@@ -196,8 +196,8 @@ const Onboarding = () => {
 
         try {
             const endpoint = activeAgent === 'website'
-                ? 'http://localhost:8000/api/demo/chat/send'
-                : 'http://localhost:8000/api/demo/missed/send';
+                ? `${import.meta.env.VITE_API_BASE_URL}/demo/chat/send`
+                : `${import.meta.env.VITE_API_BASE_URL}/demo/missed/send`;
 
             const res = await axios.post(endpoint, {
                 message: msg,
@@ -227,7 +227,7 @@ const Onboarding = () => {
 
     const handleClearChat = async () => {
         try {
-            await axios.delete('http://localhost:8000/api/demo/history', {
+            await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/demo/history`, {
                 data: { session_id: sessionId, type: activeAgent },
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -302,7 +302,7 @@ const Onboarding = () => {
         if (!token) return;
         try {
             console.log("Fetching prompts from API...");
-            const res = await axios.get('http://localhost:8000/api/company/prompts', {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/company/prompts`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             console.log("API Response Data:", res.data);
@@ -358,7 +358,7 @@ const Onboarding = () => {
     const fetchCompanyData = async () => {
         try {
             // Assume 8001 for FastAPI service based on context
-            const res = await axios.get(`http://localhost:8000/api/ai/get-company-data/${companyId}`, {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/ai/get-company-data/${companyId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.data && res.data.success && res.data.business_data && Object.keys(res.data.business_data).length > 0) {
@@ -396,7 +396,7 @@ const Onboarding = () => {
     const handlePromptSave = async (key: string) => {
         setPromptSaving(prev => ({ ...prev, [key]: true }));
         try {
-            await axios.post('http://localhost:8000/api/company/prompts', {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/company/prompts`, {
                 key,
                 prompt_text: (prompts as any)[key]
             }, {
@@ -422,7 +422,7 @@ const Onboarding = () => {
         if (!window.confirm("Are you sure you want to reset to the default system prompt? The page will refresh.")) return;
 
         try {
-            const res = await axios.delete('http://localhost:8000/api/company/prompts', {
+            const res = await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/company/prompts`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 data: { key }
             });
@@ -473,7 +473,7 @@ const Onboarding = () => {
                 formData.append('file', selectedFile);
             }
 
-            const response = await axios.post('http://localhost:8000/api/ai/extract-from-source', formData, {
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/ai/extract-from-source`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     'Authorization': `Bearer ${token}`
@@ -573,7 +573,7 @@ const Onboarding = () => {
 
         try {
             setIsSaving(true);
-            const response = await axios.post('http://localhost:8000/api/ai/index-to-pinecone', {
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/ai/index-to-pinecone`, {
                 company_id: companyId,
                 scraped_json_path: jsonPathToUse,
                 edited_business_data: scrapedData
@@ -584,7 +584,7 @@ const Onboarding = () => {
             if (response.data.success) {
                 // Activate AI in Backend
                 try {
-                    await axios.post('http://localhost:8000/api/company/complete-onboarding', {}, {
+                    await axios.post(`${import.meta.env.VITE_API_BASE_URL}/company/complete-onboarding`, {}, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }
