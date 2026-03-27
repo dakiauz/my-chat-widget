@@ -52,12 +52,24 @@ export const usersApi = baseApi.injectEndpoints({
             invalidatesTags: ['Users'],
         }),
 
-        deleteUser: builder.mutation<IAddUsersResponse, number>({
-            query: (userId) => ({
-                url: `/users/delete/${userId}`,
+        deleteUser: builder.mutation<IAddUsersResponse, { id: number; force?: boolean }>({
+            query: ({ id, force }) => ({
+                url: `/users/delete/${id}${force ? '?force=true' : ''}`,
                 method: 'DELETE',
                 headers: {
                     Authorization: `Bearer ${getState().auth.token}`,
+                },
+            }),
+            invalidatesTags: ['Users'],
+        }),
+        transferUser: builder.mutation<IAddUsersResponse, { id: number; target_user_id: number }>({
+            query: ({ id, target_user_id }) => ({
+                url: `/users/transfer/${id}`,
+                method: 'POST',
+                body: JSON.stringify({ target_user_id }),
+                headers: {
+                    Authorization: `Bearer ${getState().auth.token}`,
+                    'Content-Type': 'application/json',
                 },
             }),
             invalidatesTags: ['Users'],
@@ -74,6 +86,6 @@ export const usersApi = baseApi.injectEndpoints({
     }),
 });
 
-export const { useGetUserRolesQuery, useAddUserMutation, useGetUsersQuery, useDeleteUserMutation, useUpdateUserMutation } = usersApi;
+export const { useGetUserRolesQuery, useAddUserMutation, useGetUsersQuery, useDeleteUserMutation, useUpdateUserMutation, useTransferUserMutation } = usersApi;
 
 export default usersApi;

@@ -4,6 +4,10 @@ import { useForm } from '@mantine/form';
 import { showNotification } from '@mantine/notifications';
 import { useStartCampaignMutation } from '../services/campaignApi';
 import ModalWrapper from '@/app/shared/components/ui/modals/crud-modal/ModalWrapper';
+import { useSelector } from 'react-redux';
+import { IRootState } from '@/app/store';
+import Tooltip from '@/app/shared/components/ui/Tooltip';
+import { Alert } from '@mantine/core';
 
 interface ICampaignSetupModalProps {
     isOpen: boolean;
@@ -17,6 +21,9 @@ const CampaignSetupModal: FC<ICampaignSetupModalProps> = ({ isOpen, close, leadL
     const listIdNum = leadListId && leadListId !== 'all' ? parseInt(leadListId) : 0;
 
     const [startCampaign, { isLoading: isStarting }] = useStartCampaignMutation();
+    const auth = useSelector((state: IRootState) => state.auth);
+    const canSendSMS = !!auth?.user?.can_send_sms;
+    const canSendEmail = !!auth?.user?.can_send_email;
 
     const form = useForm({
         initialValues: {
@@ -193,6 +200,15 @@ const CampaignSetupModal: FC<ICampaignSetupModalProps> = ({ isOpen, close, leadL
                     minRows={2}
                 />
 
+                {(!canSendEmail || !canSendSMS) && (
+                    <Alert color="blue" title="Integrations Required">
+                        <Stack spacing="xs">
+                            {!canSendEmail && <Text size="sm">📧 Email is not connected. Connect in <b>Integrations</b> to use Email channels.</Text>}
+                            {!canSendSMS && <Text size="sm">💬 Twilio is not connected. Connect in <b>Integrations</b> to use SMS channels.</Text>}
+                        </Stack>
+                    </Alert>
+                )}
+
                 <Group grow>
                     <NumberInput
                         label="Batch Size (Max 100)"
@@ -223,10 +239,10 @@ const CampaignSetupModal: FC<ICampaignSetupModalProps> = ({ isOpen, close, leadL
                                 <Text size="sm" fw={500} color="red.7">⚠️ {estimatedTime.explanation}</Text>
                             ) : (
                                 <>
-                                    <Text size="sm" fw={600} mb={2}>⏳ Estimated Campaign Completion Time:</Text>
+                                    <Text size="sm" fw={600} mb={2} color="red.7">🚀 TESTING MODE ACTIVE:</Text>
                                     <div className="flex flex-col gap-1 mt-1 pl-6">
-                                        <Text size="sm"><b>Testing (Minutes):</b> {estimatedTime.testing}</Text>
-                                        <Text size="sm"><b>Production (Hours):</b> {estimatedTime.prod}</Text>
+                                        <Text size="sm"><b>Time between batches:</b> {estimatedTime.testing} (1 Hour = 1 Minute)</Text>
+                                        <Text size="sm" color="dimmed" sx={{ textDecoration: 'line-through' }}>Production (Hours): {estimatedTime.prod}</Text>
                                     </div>
                                     {estimatedTime.explanation && (
                                         <Text size="sm" color="blue.7" mt="sm">💡 {estimatedTime.explanation}</Text>
@@ -256,45 +272,69 @@ const CampaignSetupModal: FC<ICampaignSetupModalProps> = ({ isOpen, close, leadL
                         <Button
                             variant={selectedChannel === 'email' ? 'filled' : 'outline'}
                             color="blue"
-                            onClick={() => setSelectedChannel('email')}
+                            onClick={() => {
+                                if (!canSendEmail) {
+                                    showNotification({ title: 'Integration Required', message: 'Please connect your email in the Integrations tab.', color: 'red' });
+                                    return;
+                                }
+                                setSelectedChannel('email');
+                            }}
+                            disabled={!canSendEmail}
                             sx={(theme) => ({
+                                opacity: canSendEmail ? 1 : 0.4,
                                 '&:hover': {
-                                    backgroundColor: `${selectedChannel === 'email' ? theme.colors.blue[7] : theme.colors.blue[0]} !important`,
-                                    color: `${selectedChannel === 'email' ? 'white' : theme.colors.blue[7]} !important`,
+                                    backgroundColor: canSendEmail ? `${selectedChannel === 'email' ? theme.colors.blue[7] : theme.colors.blue[0]} !important` : undefined,
+                                    color: canSendEmail ? `${selectedChannel === 'email' ? 'white' : theme.colors.blue[7]} !important` : undefined,
                                 }
                             })}
                         >
-                            Send Email
+                            Send Email {!canSendEmail && '🚫'}
                         </Button>
                     )}
                     {hasPhones && (
                         <Button
                             variant={selectedChannel === 'sms' ? 'filled' : 'outline'}
                             color="teal"
-                            onClick={() => setSelectedChannel('sms')}
+                            onClick={() => {
+                                if (!canSendSMS) {
+                                    showNotification({ title: 'Integration Required', message: 'Please connect your Twilio account in the Integrations tab.', color: 'red' });
+                                    return;
+                                }
+                                setSelectedChannel('sms');
+                            }}
+                            disabled={!canSendSMS}
                             sx={(theme) => ({
+                                opacity: canSendSMS ? 1 : 0.4,
                                 '&:hover': {
-                                    backgroundColor: `${selectedChannel === 'sms' ? theme.colors.teal[7] : theme.colors.teal[0]} !important`,
-                                    color: `${selectedChannel === 'sms' ? 'white' : theme.colors.teal[7]} !important`,
+                                    backgroundColor: canSendSMS ? `${selectedChannel === 'sms' ? theme.colors.teal[7] : theme.colors.teal[0]} !important` : undefined,
+                                    color: canSendSMS ? `${selectedChannel === 'sms' ? 'white' : theme.colors.teal[7]} !important` : undefined,
                                 }
                             })}
                         >
-                            Send SMS
+                            Send SMS {!canSendSMS && '🚫'}
                         </Button>
                     )}
                     {hasEmails && hasPhones && (
                         <Button
                             variant={selectedChannel === 'both' ? 'filled' : 'outline'}
                             color="purple"
-                            onClick={() => setSelectedChannel('both')}
+                            onClick={() => {
+                                if (!canSendEmail || !canSendSMS) {
+                                    showNotification({ title: 'Integrations Required', message: 'Both Email and Twilio must be connected to use this channel.', color: 'red' });
+                                    return;
+                                }
+                                setSelectedChannel('both');
+                            }}
+                            disabled={!canSendEmail || !canSendSMS}
                             sx={(theme) => ({
+                                opacity: (canSendEmail && canSendSMS) ? 1 : 0.4,
                                 '&:hover': {
-                                    backgroundColor: `${selectedChannel === 'both' ? theme.colors.violet[7] : theme.colors.violet[0]} !important`,
-                                    color: `${selectedChannel === 'both' ? 'white' : theme.colors.violet[7]} !important`,
+                                    backgroundColor: (canSendEmail && canSendSMS) ? `${selectedChannel === 'both' ? theme.colors.violet[7] : theme.colors.violet[0]} !important` : undefined,
+                                    color: (canSendEmail && canSendSMS) ? `${selectedChannel === 'both' ? 'white' : theme.colors.violet[7]} !important` : undefined,
                                 }
                             })}
                         >
-                            Send Both
+                            Send Both {(!canSendEmail || !canSendSMS) && '🚫'}
                         </Button>
                     )}
                 </Group>

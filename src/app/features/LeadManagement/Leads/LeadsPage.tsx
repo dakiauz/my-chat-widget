@@ -310,9 +310,16 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                         </Menu.Target>
 
                         <Menu.Dropdown>
-                            <Menu.Item onClick={() => setIsBulkMessageModalOpen(true)}>
-                                Send Message
-                            </Menu.Item>
+                            <Tooltip content={!auth?.user?.can_send_email && !auth?.user?.can_send_sms ? "Connect Email or Twilio in Integrations Tab" : ""}>
+                                <div style={{ display: 'inline-block', width: '100%' }}>
+                                    <Menu.Item
+                                        onClick={() => setIsBulkMessageModalOpen(true)}
+                                        disabled={!auth?.user?.can_send_email && !auth?.user?.can_send_sms}
+                                    >
+                                        Send Message
+                                    </Menu.Item>
+                                </div>
+                            </Tooltip>
                             {!assignLeadListPermission ? (
                                 <Tooltip content="Permission Denied. Ask the owner to assign you this permission.">
                                     <div style={{ display: 'inline-block', width: '100%' }}>
@@ -422,21 +429,27 @@ const LeadsPage: FC<ILeadsPageProps> = ({ data, fetching, setSelectedLeadList, s
                                 Stop Power Dialer
                             </button>
                         ) : (
-                            <button
-                                className="btn rounded-lg shadow-none text-white px-4"
-                                style={{ backgroundColor: '#22c55e' }}
-                                onClick={handleStartPowerDialerPrompt}
-                            >
-                                Power Dial
-                            </button>
+                            <Tooltip content={!auth?.user?.can_send_sms ? "Connect Twilio in Integrations Tab" : ""}>
+                                <button
+                                    className="btn rounded-lg shadow-none text-white px-4 disabled:opacity-50"
+                                    style={{ backgroundColor: '#22c55e' }}
+                                    onClick={handleStartPowerDialerPrompt}
+                                    disabled={!auth?.user?.can_send_sms}
+                                >
+                                    Power Dial
+                                </button>
+                            </Tooltip>
                         )}
-                        <button
-                            className="btn rounded-lg shadow-none text-white px-4"
-                            style={{ backgroundColor: '#7C3AED' }}
-                            onClick={() => setIsCampaignModalOpen(true)}
-                        >
-                            {selectedRows.length > 0 && selectedRows.length < (data?.length || 0) ? 'Send via Campaign' : 'Setup Campaign'}
-                        </button>
+                        <Tooltip content={!auth?.user?.can_send_email && !auth?.user?.can_send_sms ? "Connect Email or Twilio in Integrations Tab" : ""}>
+                            <button
+                                className="btn rounded-lg shadow-none text-white px-4 disabled:opacity-50"
+                                style={{ backgroundColor: '#7C3AED' }}
+                                onClick={() => setIsCampaignModalOpen(true)}
+                                disabled={!auth?.user?.can_send_email && !auth?.user?.can_send_sms}
+                            >
+                                {selectedRows.length > 0 && selectedRows.length < (data?.length || 0) ? 'Send via Campaign' : 'Setup Campaign'}
+                            </button>
+                        </Tooltip>
                     </>
                 )}
             </div>

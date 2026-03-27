@@ -64,7 +64,9 @@ export interface IUser {
         created_at: string | null;
         updated_at: string;
     };
-    email_integration?: IEmailSocialAccount | null;
+    email_integration?: any | null;
+    can_send_email?: boolean;
+    can_send_sms?: boolean;
 }
 
 // forms

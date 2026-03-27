@@ -4,6 +4,9 @@ import { showNotification } from '@mantine/notifications';
 import { IconX } from '@tabler/icons-react';
 import { ILead } from '../models/lead';
 import { useBulkMessageMutation } from '../services/leadsApi';
+import { useSelector } from 'react-redux';
+import { IRootState } from '@/app/store';
+import Tooltip from '@/app/shared/components/ui/Tooltip';
 
 interface BulkMessageModalProps {
     isOpen: boolean;
@@ -18,6 +21,9 @@ const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLe
     const [smsBody, setSmsBody] = useState('');
 
     const [bulkMessage, { isLoading }] = useBulkMessageMutation();
+    const auth = useSelector((state: IRootState) => state.auth);
+    const canSendSMS = !!auth?.user?.can_send_sms;
+    const canSendEmail = !!auth?.user?.can_send_email;
 
     const [activeEmails, setActiveEmails] = useState<ILead[]>([]);
     const [activePhones, setActivePhones] = useState<ILead[]>([]);
@@ -112,6 +118,15 @@ const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLe
                     </Alert>
                 )}
 
+                {(!canSendEmail || !canSendSMS) && (
+                    <Alert color="blue" title="Integrations Required">
+                        <Stack spacing="xs">
+                            {!canSendEmail && <Text size="sm">📧 Email is not connected. Please go to the <b>Integrations</b> tab to set up your email.</Text>}
+                            {!canSendSMS && <Text size="sm">💬 Twilio is not connected. Please go to the <b>Integrations</b> tab to set up SMS.</Text>}
+                        </Stack>
+                    </Alert>
+                )}
+
                 {/* Selected Leads Summary */}
                 <div>
                     <Text size="sm" fw={600} mb={4}>
@@ -136,10 +151,15 @@ const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLe
 
                 {/* Email Addresses */}
                 {hasEmails && (
-                    <div>
-                        <Text size="xs" fw={500} color="dimmed" mb={4}>
-                            Email Recipients
-                        </Text>
+                    <div style={{ opacity: canSendEmail ? 1 : 0.5 }}>
+                        <Group spacing={8} mb={4}>
+                            <Text size="xs" fw={500} color="dimmed">
+                                Email Recipients
+                            </Text>
+                            {!canSendEmail && (
+                                <Badge color="red" size="xs" variant="filled">Email Connection Required</Badge>
+                            )}
+                        </Group>
                         <ScrollArea h={activeEmails.length > 3 ? 80 : 'auto'} type="auto" offsetScrollbars>
                             <div className="flex flex-wrap gap-1">
                                 {activeEmails.map((l) => (
@@ -165,10 +185,15 @@ const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLe
 
                 {/* Phone Numbers */}
                 {hasPhones && (
-                    <div>
-                        <Text size="xs" fw={500} color="dimmed" mb={4}>
-                            SMS Recipients
-                        </Text>
+                    <div style={{ opacity: canSendSMS ? 1 : 0.5 }}>
+                        <Group spacing={8} mb={4}>
+                            <Text size="xs" fw={500} color="dimmed">
+                                SMS Recipients
+                            </Text>
+                            {!canSendSMS && (
+                                <Badge color="red" size="xs" variant="filled">Twilio Connection Required</Badge>
+                            )}
+                        </Group>
                         <ScrollArea h={activePhones.length > 3 ? 80 : 'auto'} type="auto" offsetScrollbars>
                             <div className="flex flex-wrap gap-1">
                                 {activePhones.map((l) => (
@@ -197,10 +222,10 @@ const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLe
                 {/* Email Section */}
                 {hasEmails && (
                     <div>
-                        <Text size="sm" fw={600} mb="xs">
-                            📧 Email
+                        <Text size="sm" fw={600} mb="xs" color={canSendEmail ? 'dark' : 'dimmed'}>
+                            📧 Email {!canSendEmail && '(Integration Required)'}
                         </Text>
-                        <Stack spacing="xs">
+                        <Stack spacing="xs" sx={{ pointerEvents: canSendEmail ? 'auto' : 'none', opacity: canSendEmail ? 1 : 0.6 }}>
                             <TextInput placeholder="Email Subject" value={emailSubject} onChange={(e) => setEmailSubject(e.currentTarget.value)} size="sm" />
                             <Textarea
                                 placeholder="Type your email message here..."
@@ -220,10 +245,10 @@ const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLe
                 {/* SMS Section */}
                 {hasPhones && (
                     <div>
-                        <Text size="sm" fw={600} mb="xs">
-                            💬 SMS
+                        <Text size="sm" fw={600} mb="xs" color={canSendSMS ? 'dark' : 'dimmed'}>
+                            💬 SMS {!canSendSMS && '(Integration Required)'}
                         </Text>
-                        <Stack spacing="xs">
+                        <Stack spacing="xs" sx={{ pointerEvents: canSendSMS ? 'auto' : 'none', opacity: canSendSMS ? 1 : 0.6 }}>
                             <Textarea
                                 placeholder="Type your SMS message here..."
                                 value={smsBody}
@@ -249,7 +274,7 @@ const BulkMessageModal: FC<BulkMessageModalProps> = ({ isOpen, close, selectedLe
                         className="btn rounded-lg shadow-none text-white"
                         style={{ backgroundColor: '#7C3AED' }}
                         onClick={handleSubmit}
-                        disabled={isLoading || !hasAnyRecipient}
+                        disabled={isLoading || !hasAnyRecipient || (hasEmails && !canSendEmail) || (hasPhones && !canSendSMS)}
                     >
                         {isLoading ? 'Sending...' : 'Send Message'}
                     </button>
