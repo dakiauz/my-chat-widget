@@ -43,12 +43,14 @@ const reverbHost = import.meta.env.VITE_REVERB_HOST;
 const reverbPort = parseInt(import.meta.env.VITE_REVERB_PORT);
 const reverbAppKey = import.meta.env.VITE_REVERB_APP_KEY;
 
+const defaultApiBase = (import.meta.env.VITE_BACKEND_API_ADDRESS || '').replace(/\/$/, '');
+
 export default function ContactWidget({
     primaryColor = '#610BFC',
     secondaryColor = '#e5e7eb',
     companyId: companyIdProp,
-    apiEndpoint = 'https://api.dakia.ai/api/chat-widget/create',
-    chatApiEndpoint = 'https://api.dakia.ai/api/chat-widget/send',
+    apiEndpoint = `${defaultApiBase}/chat-widget/create`,
+    chatApiEndpoint = `${defaultApiBase}/chat-widget/send`,
 }: ContactWidgetProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [formStatus, setFormStatus] = useState<FormStatus>('idle');

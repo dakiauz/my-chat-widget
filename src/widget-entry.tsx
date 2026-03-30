@@ -10,8 +10,9 @@ if (script) {
     const primaryColor = script.getAttribute('data-primary-color') || '#610BFC';
     const secondaryColor = script.getAttribute('data-secondary-color') || '#e5e7eb';
 
-    // Read the base URL, default to production if not provided
-    const apiBaseUrl = script.getAttribute('data-api-base-url') || (import.meta.env.VITE_BACKEND_API_ADDRESS?.replace(/\/api$/, '') || 'https://dakia.site');
+    // Read the base URL, default to environment variable or fallback to current script location
+    const envBackendUrl = import.meta.env.VITE_BACKEND_API_ADDRESS?.replace(/\/api$/, '');
+    const apiBaseUrl = script.getAttribute('data-api-base-url') || envBackendUrl || 'https://dakia.site';
 
     // Construct endpoints
     // Ensure apiBaseUrl doesn't have a trailing slash to avoid double slashes

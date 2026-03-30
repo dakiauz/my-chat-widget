@@ -70,9 +70,10 @@ export default function AgentConversationView({
 
         try {
             const authToken = localStorage.getItem("authToken");
+            const apiBase = (import.meta.env.VITE_BACKEND_API_ADDRESS || '').replace(/\/$/, '');
 
             // You might want to show a loading state here
-            const res = await fetch("https://api.dakia.ai/api/chat-widget/send/agent", {
+            const res = await fetch(`${apiBase}/chat-widget/send/agent`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -145,18 +146,16 @@ export default function AgentConversationView({
                     {activeConversationMessages.map((msg, index) => (
                         <div
                             key={msg.data?.id ?? index}
-                            className={`flex ${
-                                msg.data?.sender_type === "agent"
-                                    ? "justify-end"
-                                    : "justify-start"
-                            }`}
+                            className={`flex ${msg.data?.sender_type === "agent"
+                                ? "justify-end"
+                                : "justify-start"
+                                }`}
                         >
                             <div
-                                className={`p-3 rounded-xl max-w-[70%] text-white shadow-sm ${
-                                    msg.data?.sender_type === "agent"
-                                        ? "bg-blue-500 rounded-br-sm"
-                                        : "bg-gray-500 rounded-bl-sm"
-                                }`}
+                                className={`p-3 rounded-xl max-w-[70%] text-white shadow-sm ${msg.data?.sender_type === "agent"
+                                    ? "bg-blue-500 rounded-br-sm"
+                                    : "bg-gray-500 rounded-bl-sm"
+                                    }`}
                             >
                                 <p>{msg.data?.message}</p>
                             </div>
