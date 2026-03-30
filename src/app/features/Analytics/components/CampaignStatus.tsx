@@ -35,10 +35,20 @@ const calculateTimeLeft = (pending: number, batchSize: number, intervalMinutes: 
     return `${totalMinutesLeft} Minutes`;
 };
 
-export default function CampaignStatus() {
+export default function CampaignStatus({ userId, overrideData, onFilterChange }: { userId?: string; overrideData?: any; onFilterChange?: (filter: string) => void }) {
     const [filter, setFilter] = useState<string>('30d');
     const [showPrevious, setShowPrevious] = useState(false);
-    const { data, isLoading, isError } = useGetCampaignStatsQuery(filter, { pollingInterval: 5000 });
+    const { data: individualData, isLoading, isError } = useGetCampaignStatsQuery({ filter, userId }, { pollingInterval: 5000, skip: !!overrideData });
+
+    const handleFilterChange = (val: string) => {
+        setFilter(val);
+        if (onFilterChange) onFilterChange(val);
+    };
+
+    const data = overrideData ? {
+        success: true,
+        campaigns: overrideData.campaigns
+    } : individualData;
 
     if (isLoading) {
         return (
@@ -60,8 +70,8 @@ export default function CampaignStatus() {
     const campaigns = data.campaigns || [];
 
     // Split campaigns based on status
-    const activeCampaigns = campaigns.filter(c => ['active', 'paused'].includes(c.status));
-    const previousCampaigns = campaigns.filter(c => ['completed', 'cancelled'].includes(c.status));
+    const activeCampaigns = campaigns.filter((c: any) => ['active', 'paused'].includes(c.status));
+    const previousCampaigns = campaigns.filter((c: any) => ['completed', 'cancelled'].includes(c.status));
 
     // Reusable render block to avoid duplicating 100+ lines of JSX
     const renderCampaignCard = (campaign: ICampaignStats) => (
@@ -121,7 +131,7 @@ export default function CampaignStatus() {
                         Recent Message Dispatch Log
                     </h4>
 
-                    {campaign.recent_messages.length === 0 ? (
+                    {!campaign.recent_messages || campaign.recent_messages.length === 0 ? (
                         <div className="text-center py-6 text-gray-400 text-sm">
                             No messages dispatched yet
                         </div>
@@ -138,13 +148,13 @@ export default function CampaignStatus() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {campaign.recent_messages.map((msg) => (
+                                    {campaign.recent_messages.map((msg: any) => (
                                         <tr key={msg.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                                             <td className="py-2 px-3 font-medium text-gray-800">{msg.lead_name || '—'}</td>
                                             <td className="py-2 px-3 text-gray-600">{msg.recipient}</td>
                                             <td className="py-2 px-3">
                                                 <div className="flex gap-1">
-                                                    {msg.channel.split(', ').map(ch => (
+                                                    {(msg.channel || 'unknown').split(', ').map((ch: any) => (
                                                         <Badge key={ch} color={channelColors[ch] || 'gray'} variant="light" size="xs">
                                                             {channelLabels[ch] || ch.toUpperCase()}
                                                         </Badge>
@@ -224,7 +234,7 @@ export default function CampaignStatus() {
                             className="w-40"
                             placeholder="Filter by time"
                             value={filter}
-                            onChange={(val) => setFilter(val || '30d')}
+                            onChange={(val) => handleFilterChange(val || '30d')}
                             data={[
                                 { value: '1h', label: 'Last Hour' },
                                 { value: '24h', label: 'Last 24 Hours' },

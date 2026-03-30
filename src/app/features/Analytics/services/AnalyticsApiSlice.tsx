@@ -29,6 +29,14 @@ export interface IBulkMessageRecord {
     created_at: string;
 }
 
+export interface ITeamPerformanceResponse {
+    success: boolean;
+    is_aggregated: boolean;
+    bulk_stats: IBulkMessageStats;
+    recent_bulk: IBulkMessageRecord[];
+    campaigns: ICampaignStats[];
+}
+
 export interface IBulkMessageStatsResponse {
     success: boolean;
     stats: IBulkMessageStats;
@@ -68,9 +76,9 @@ export const analyticsApiSlice = baseApi.injectEndpoints({
                 },
             }),
         }),
-        getBulkMessageStats: builder.query<IBulkMessageStatsResponse, void>({
-            query: () => ({
-                url: '/leads/bulk/message-stats',
+        getBulkMessageStats: builder.query<IBulkMessageStatsResponse, string | void>({
+            query: (userId) => ({
+                url: `/leads/bulk/message-stats${userId ? `?user_id=${userId}` : ''}`,
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -78,9 +86,19 @@ export const analyticsApiSlice = baseApi.injectEndpoints({
                 },
             }),
         }),
-        getCampaignStats: builder.query<ICampaignStatsResponse, string>({
-            query: (filter = '30d') => ({
-                url: `/campaigns/stats?filter=${filter}`,
+        getCampaignStats: builder.query<ICampaignStatsResponse, { filter: string; userId?: string }>({
+            query: ({ filter = '30d', userId }) => ({
+                url: `/campaigns/stats?filter=${filter}${userId ? `&user_id=${userId}` : ''}`,
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${getState().auth.token}`,
+                },
+            }),
+        }),
+        getTeamPerformance: builder.query<ITeamPerformanceResponse, { filter: string; userId?: string }>({
+            query: ({ filter = '30d', userId }) => ({
+                url: `/dashboard/team-performance?filter=${filter}${userId ? `&user_id=${userId}` : ''}`,
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -91,4 +109,4 @@ export const analyticsApiSlice = baseApi.injectEndpoints({
     }),
 });
 
-export const { useGetDashboardDataQuery, useGetBulkMessageStatsQuery, useGetCampaignStatsQuery } = analyticsApiSlice;
+export const { useGetDashboardDataQuery, useGetBulkMessageStatsQuery, useGetCampaignStatsQuery, useGetTeamPerformanceQuery } = analyticsApiSlice;

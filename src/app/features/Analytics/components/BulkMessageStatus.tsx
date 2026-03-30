@@ -23,8 +23,14 @@ const statusColors: Record<string, string> = {
     pending: 'yellow',
 };
 
-export default function BulkMessageStatus() {
-    const { data, isLoading, isError } = useGetBulkMessageStatsQuery();
+export default function BulkMessageStatus({ userId, overrideData }: { userId?: string; overrideData?: any }) {
+    const { data: individualData, isLoading, isError } = useGetBulkMessageStatsQuery(userId, { skip: !!overrideData });
+
+    const data = overrideData ? {
+        success: true,
+        stats: overrideData.bulk_stats,
+        recent_messages: overrideData.recent_bulk
+    } : individualData;
 
     if (isLoading) {
         return (
@@ -173,7 +179,7 @@ export default function BulkMessageStatus() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {recentMessages.map((msg) => (
+                                    {recentMessages.map((msg: any) => (
                                         <tr key={msg.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                                             <td className="py-3 px-3 font-medium text-gray-800">{msg.lead_name || '—'}</td>
                                             <td className="py-3 px-3 text-gray-600">{msg.recipient}</td>

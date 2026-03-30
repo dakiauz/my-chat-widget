@@ -1,11 +1,14 @@
-import { Select } from '@mantine/core';
+import { Select, Text, Loader } from '@mantine/core';
 import { Card, CardContent } from '../Calls/components/ui/card';
-import { Info, TrendingUp } from 'lucide-react';
-import { useDispatch } from 'react-redux';
-import { useEffect } from 'react';
+import { Info, TrendingUp, AlertTriangle } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
 import { setPageTitle } from '@/_theme/themeConfigSlice';
 import BulkMessageStatus from './components/BulkMessageStatus';
 import CampaignStatus from './components/CampaignStatus';
+import { useGetUsersQuery } from '../User Management/Users/services/usersApi';
+import { IRootState } from '@/app/store';
+import { useGetTeamPerformanceQuery } from './services/AnalyticsApiSlice';
 
 const conversionSources = [
     {
@@ -129,26 +132,88 @@ const callInsights = [
         name: 'Sebastian Quinn',
         time: '08:00 AM',
         date: '09/03/2025',
-        message: "Yeah, I know what you mean. I've got a ton of emails to go through. I",
+        message: "Yeah, I know what you mean. I've got a ton of emails to go through.",
         bgColor: 'bg-cyan-50',
     },
 ];
 
 export default function AnalyticsPage() {
     const dispatch = useDispatch();
+    const { data: usersData } = useGetUsersQuery();
+    const auth = useSelector((state: IRootState) => state.auth);
+    const [selectedUserId, setSelectedUserId] = useState<string>('all');
+    const [filter, setFilter] = useState<string>('30d');
+
     useEffect(() => {
         dispatch(setPageTitle('Analytics'));
-    });
+    }, [dispatch]);
+
+    const isOwner = auth?.user?.roles?.some((r: any) => r.name === 'owner');
+
+    const { data: teamStats, isLoading, isError } = useGetTeamPerformanceQuery(
+        { filter, userId: selectedUserId === 'all' ? undefined : selectedUserId },
+        { skip: !isOwner }
+    );
+
+    const userOptions = [
+        { value: 'all', label: '🏆 Whole Team Performance' },
+        ...(usersData?.data?.users?.map((u: any) => ({
+            value: u.id.toString(),
+            label: `👤 ${u.name}${u.id === auth?.user?.id ? ' (You)' : ''}`
+        })) || [])
+    ];
+
+    if (isOwner && isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader size="xl" variant="bars" color="indigo" />
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen p-10">
             <div className="mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="w-4 h-8 bg-blue rounded"></div>
-                    <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-4 h-8 bg-blue rounded"></div>
+                        <h1 className="text-2xl font-bold text-gray-900">
+                            {isOwner && selectedUserId === 'all' ? 'Team Performance' : 'Analytics Dashboard'}
+                        </h1>
+                    </div>
+
+                    {isOwner && (
+                        <div className="flex items-center gap-3 min-w-[250px]">
+                            <Text size="sm" fw={500} color="dimmed">Filter by User:</Text>
+                            <Select
+                                placeholder="Select User"
+                                data={userOptions}
+                                value={selectedUserId}
+                                onChange={(val) => setSelectedUserId(val || 'all')}
+                                size="sm"
+                                className="flex-1"
+                                styles={{
+                                    input: {
+                                        borderRadius: '8px',
+                                        border: '1px solid #7C3AED33',
+                                        '&:focus': { borderColor: '#7C3AED' }
+                                    }
+                                }}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
 
+            {isError && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center text-red-600">
+                    <AlertTriangle className="w-5 h-5 mr-3" />
+                    <span>Failed to load team analytics. Please try again.</span>
+                </div>
+            )}
+
             <div className="mx-auto space-y-6 bg-white rounded-lg">
+                {/* Regular Dashboard Components (Placeholder Data for now as per original) */}
                 <Card className="border-0 bg-[#F5F9F8]">
                     <CardContent className="p-6">
                         <div className="flex justify-between items-center mb-6">
@@ -164,7 +229,7 @@ export default function AnalyticsPage() {
                                 styles={{
                                     input: {
                                         backgroundColor: 'white',
-                                        border: '1px solid #d1d5db', // tailwind gray-300
+                                        border: '1px solid #d1d5db',
                                         borderRadius: '6px',
                                         fontSize: '0.875rem',
                                     },
@@ -175,7 +240,7 @@ export default function AnalyticsPage() {
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
                             {conversionSources.map((source, index) => (
                                 <div key={index} className="text-center">
-                                    <div className={`w-16 h-16  rounded-full flex items-center justify-center mx-auto mb-3`}>
+                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3`}>
                                         <img src={source.icon} alt={source.name} className="w-14 h-14" />
                                     </div>
                                     <div className="flex items-center justify-center gap-1 mb-1">
@@ -217,7 +282,7 @@ export default function AnalyticsPage() {
                                     styles={{
                                         input: {
                                             backgroundColor: 'white',
-                                            border: '1px solid #d1d5db', // tailwind gray-300
+                                            border: '1px solid #d1d5db',
                                             borderRadius: '6px',
                                             fontSize: '0.875rem',
                                         },
@@ -272,7 +337,7 @@ export default function AnalyticsPage() {
                                     styles={{
                                         input: {
                                             backgroundColor: 'white',
-                                            border: '1px solid #d1d5db', // tailwind gray-300
+                                            border: '1px solid #d1d5db',
                                             borderRadius: '6px',
                                             fontSize: '0.875rem',
                                         },
@@ -300,17 +365,29 @@ export default function AnalyticsPage() {
                 <div>
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-4 h-8 bg-indigo-500 rounded"></div>
-                        <h2 className="text-lg font-semibold text-gray-900">Manual Bulk Messages</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            {isOwner && selectedUserId === 'all' ? 'Team Bulk Messages' : 'Manual Bulk Messages'}
+                        </h2>
                     </div>
-                    <BulkMessageStatus />
+                    {/* Pass the specialized team data if owner & aggregated, otherwise use individual status components */}
+                    <BulkMessageStatus
+                        userId={selectedUserId === 'all' ? undefined : selectedUserId}
+                        overrideData={isOwner && selectedUserId === 'all' ? teamStats : undefined}
+                    />
                 </div>
 
                 <div className="pt-8 border-t border-gray-100">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-4 h-8 bg-[#FFBC99] rounded"></div>
-                        <h2 className="text-lg font-semibold text-gray-900">Automated Campaigns</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            {isOwner && selectedUserId === 'all' ? 'Team Campaigns' : 'Automated Campaigns'}
+                        </h2>
                     </div>
-                    <CampaignStatus />
+                    <CampaignStatus
+                        userId={selectedUserId === 'all' ? undefined : selectedUserId}
+                        overrideData={isOwner && selectedUserId === 'all' ? teamStats : undefined}
+                        onFilterChange={setFilter}
+                    />
                 </div>
             </div>
         </div>
