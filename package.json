@@ -8,6 +8,7 @@
         "heroku-postbuild": "npm run build",
         "dev": "vite",
         "build": "tsc && vite build",
+        "build:widget": "vite build --mode widget",
         "preview": "vite preview"
     },
     "dependencies": {

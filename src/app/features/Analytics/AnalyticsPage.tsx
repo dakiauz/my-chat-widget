@@ -276,8 +276,13 @@ export default function AnalyticsPage() {
                                 </div>
                                 <Select
                                     placeholder="Select range"
-                                    data={['Last 7 days', 'Last 14 days', 'Last 30 days']}
-                                    defaultValue="Last 7 days"
+                                    data={[
+                                        { value: '1h', label: 'Last 1 hour' },
+                                        { value: '24h', label: 'Last 24 hours' },
+                                        { value: '30d', label: 'Last 30 days' },
+                                    ]}
+                                    value={filter}
+                                    onChange={(val) => setFilter(val || '30d')}
                                     size="xs"
                                     styles={{
                                         input: {
@@ -291,7 +296,40 @@ export default function AnalyticsPage() {
                             </div>
 
                             <div className="space-y-6">
-                                {channelMetrics.map((channel, index) => (
+                                {(isOwner && teamStats?.overview ? [
+                                    {
+                                        name: 'Calls Made',
+                                        icon: '/Icon/callmini.png',
+                                        count: teamStats.overview.total_calls,
+                                        bgColor: 'bg-emerald-100',
+                                        iconColor: 'text-emerald-600',
+                                        barColor: 'bg-emerald-600',
+                                    },
+                                    {
+                                        name: 'Batch Messages',
+                                        icon: '/Icon/messagemini.png',
+                                        count: teamStats.overview.total_bulk_messages,
+                                        bgColor: 'bg-cyan-100',
+                                        iconColor: 'text-cyan-600',
+                                        barColor: 'bg-cyan-600',
+                                    },
+                                    {
+                                        name: 'Individual Messages',
+                                        icon: '/Icon/emailmini.png',
+                                        count: teamStats.overview.total_individual_messages,
+                                        bgColor: 'bg-purple-100',
+                                        iconColor: 'text-purple-600',
+                                        barColor: 'bg-purple-600',
+                                    },
+                                    {
+                                        name: 'Assigned Leads',
+                                        icon: '/Icon/whatsappmini.png',
+                                        count: teamStats.overview.total_leads_assigned,
+                                        bgColor: 'bg-green-100',
+                                        iconColor: 'text-green-600',
+                                        barColor: 'bg-green-600',
+                                    },
+                                ] : channelMetrics).map((channel, index) => (
                                     <div key={index} className="space-y-2">
                                         <div className="flex items-center gap-3">
                                             <div>
@@ -301,18 +339,11 @@ export default function AnalyticsPage() {
                                                 <div className="flex items-center justify-between mb-1">
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="text-sm text-gray-600">{channel.name}</span>
-                                                        <div className="w-3.5 h-3.5 bg-gray-400 rounded-full flex items-center justify-center">
-                                                            <Info className="w-2.5 h-2.5 text-white" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 text-xs text-green-600">
-                                                        <TrendingUp className="w-3 h-3" />
-                                                        <span>{channel.change}% this week</span>
                                                     </div>
                                                 </div>
                                                 <div className="text-2xl font-bold text-gray-900 mb-2">{channel.count.toLocaleString()}</div>
                                                 <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div className={`absolute left-0 top-0 h-full ${channel.barColor} rounded-full`} style={{ width: `${channel.progress}%` }}></div>
+                                                    <div className={`absolute left-0 top-0 h-full ${channel.barColor} rounded-full`} style={{ width: '100%' }}></div>
                                                 </div>
                                             </div>
                                         </div>

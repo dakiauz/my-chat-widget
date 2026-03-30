@@ -32,6 +32,12 @@ export interface IBulkMessageRecord {
 export interface ITeamPerformanceResponse {
     success: boolean;
     is_aggregated: boolean;
+    overview: {
+        total_calls: number;
+        total_individual_messages: number;
+        total_bulk_messages: number;
+        total_leads_assigned: number;
+    };
     bulk_stats: IBulkMessageStats;
     recent_bulk: IBulkMessageRecord[];
     campaigns: ICampaignStats[];
