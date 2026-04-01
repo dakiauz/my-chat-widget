@@ -3,6 +3,14 @@ import ReactDOM from 'react-dom/client';
 import ContactWidget from './app/features/ChatWidget/ContactWidget';
 import './tailwind.css';
 
+// Browser shims for libraries that expect Node.js environment
+if (typeof (window as any).process === 'undefined') {
+    (window as any).process = { env: { NODE_ENV: 'production' } };
+}
+if (typeof (window as any).global === 'undefined') {
+    (window as any).global = window;
+}
+
 const script = document.currentScript as HTMLScriptElement || Array.from(document.getElementsByTagName('script')).find(s => s.src.includes('widget.iife')) as HTMLScriptElement;
 
 console.log("Dakia Widget: Initializing...");

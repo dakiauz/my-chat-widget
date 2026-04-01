@@ -10,8 +10,10 @@ export default defineConfig(({ mode }) => {
 
     return {
         define: {
-            'process.env': {},
-            'process.env.NODE_ENV': JSON.stringify('production'),
+            global: 'window',
+            'process.env': {
+                NODE_ENV: JSON.stringify(mode),
+            },
         },
         plugins: [
             react(),
