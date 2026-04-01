@@ -8,7 +8,7 @@ import BulkMessageStatus from './components/BulkMessageStatus';
 import CampaignStatus from './components/CampaignStatus';
 import { useGetUsersQuery } from '../User Management/Users/services/usersApi';
 import { IRootState } from '@/app/store';
-import { useGetTeamPerformanceQuery } from './services/AnalyticsApiSlice';
+import { useGetTeamPerformanceQuery, useGetBulkMessageStatsQuery } from './services/AnalyticsApiSlice';
 
 const conversionSources = [
     {
@@ -149,11 +149,15 @@ export default function AnalyticsPage() {
     }, [dispatch]);
 
     const isOwner = auth?.user?.roles?.some((r: any) => r.name === 'owner');
+    const isSubuser = !isOwner;
 
-    const { data: teamStats, isLoading, isError } = useGetTeamPerformanceQuery(
+    const { data: teamStats, isLoading: teamLoading, isError: teamError } = useGetTeamPerformanceQuery(
         { filter, userId: selectedUserId === 'all' ? undefined : selectedUserId },
         { skip: !isOwner }
     );
+
+    // Fetch individual stats for subusers (or when owner views themselves)
+    const { data: individualStats, isLoading: individualLoading } = useGetBulkMessageStatsQuery(undefined, { skip: !isSubuser });
 
     const userOptions = [
         { value: 'all', label: '🏆 Whole Team Performance' },
@@ -163,13 +167,15 @@ export default function AnalyticsPage() {
         })) || [])
     ];
 
-    if (isOwner && isLoading) {
+    if ((isOwner && teamLoading) || (isSubuser && individualLoading)) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <Loader size="xl" variant="bars" color="indigo" />
             </div>
         );
     }
+
+    const overview = isOwner ? teamStats?.overview : individualStats?.overview;
 
     return (
         <div className="min-h-screen p-10">
@@ -296,11 +302,11 @@ export default function AnalyticsPage() {
                             </div>
 
                             <div className="space-y-6">
-                                {(isOwner && teamStats?.overview ? [
+                                {(overview ? [
                                     {
                                         name: 'Calls Made',
                                         icon: '/Icon/callmini.png',
-                                        count: teamStats.overview.total_calls,
+                                        count: overview.total_calls,
                                         bgColor: 'bg-emerald-100',
                                         iconColor: 'text-emerald-600',
                                         barColor: 'bg-emerald-600',
@@ -308,7 +314,7 @@ export default function AnalyticsPage() {
                                     {
                                         name: 'Batch Messages',
                                         icon: '/Icon/messagemini.png',
-                                        count: teamStats.overview.total_bulk_messages,
+                                        count: overview.total_bulk_messages,
                                         bgColor: 'bg-cyan-100',
                                         iconColor: 'text-cyan-600',
                                         barColor: 'bg-cyan-600',
@@ -316,7 +322,7 @@ export default function AnalyticsPage() {
                                     {
                                         name: 'Individual Messages',
                                         icon: '/Icon/emailmini.png',
-                                        count: teamStats.overview.total_individual_messages,
+                                        count: overview.total_individual_messages,
                                         bgColor: 'bg-purple-100',
                                         iconColor: 'text-purple-600',
                                         barColor: 'bg-purple-600',
@@ -324,7 +330,7 @@ export default function AnalyticsPage() {
                                     {
                                         name: 'Assigned Leads',
                                         icon: '/Icon/whatsappmini.png',
-                                        count: teamStats.overview.total_leads_assigned,
+                                        count: overview.total_leads_assigned,
                                         bgColor: 'bg-green-100',
                                         iconColor: 'text-green-600',
                                         barColor: 'bg-green-600',
@@ -403,7 +409,7 @@ export default function AnalyticsPage() {
                     {/* Pass the specialized team data if owner & aggregated, otherwise use individual status components */}
                     <BulkMessageStatus
                         userId={selectedUserId === 'all' ? undefined : selectedUserId}
-                        overrideData={isOwner && selectedUserId === 'all' ? teamStats : undefined}
+                        overrideData={isOwner ? (selectedUserId === 'all' ? teamStats : undefined) : individualStats}
                     />
                 </div>
 

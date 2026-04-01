@@ -45,6 +45,12 @@ export interface ITeamPerformanceResponse {
 
 export interface IBulkMessageStatsResponse {
     success: boolean;
+    overview: {
+        total_calls: number;
+        total_individual_messages: number;
+        total_bulk_messages: number;
+        total_leads_assigned: number;
+    };
     stats: IBulkMessageStats;
     recent_messages: IBulkMessageRecord[];
 }
@@ -67,6 +73,12 @@ export interface ICampaignStats {
 
 export interface ICampaignStatsResponse {
     success: boolean;
+    overview: {
+        total_calls: number;
+        total_individual_messages: number;
+        total_bulk_messages: number;
+        total_leads_assigned: number;
+    };
     campaigns: ICampaignStats[];
 }
 
