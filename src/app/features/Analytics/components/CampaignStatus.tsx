@@ -74,119 +74,122 @@ export default function CampaignStatus({ userId, overrideData, onFilterChange }:
     const previousCampaigns = campaigns.filter((c: any) => ['completed', 'cancelled'].includes(c.status));
 
     // Reusable render block to avoid duplicating 100+ lines of JSX
-    const renderCampaignCard = (campaign: ICampaignStats) => (
-        <Card key={campaign.id} className="border-0 shadow-sm overflow-hidden mb-8">
-            <CardContent className="p-0">
-                <div className="bg-gray-50 border-b border-gray-100 p-6">
-                    <div className="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">{campaign.name}</h3>
-                            <div className="flex gap-2">
-                                <Badge color={statusColors[campaign.status] || 'gray'} variant="filled">
-                                    {campaign.status.toUpperCase()}
-                                </Badge>
-                                {campaign.channels.map((ch) => (
-                                    <Badge key={ch} color={channelColors[ch] || 'gray'} variant="outline">
-                                        {channelLabels[ch] || ch.toUpperCase()}
+    const renderCampaignCard = (campaign: ICampaignStats) => {
+        const stats = campaign.stats || { sent: 0, failed: 0, pending: 0, total: 0 };
+        return (
+            <Card key={campaign.id} className="border-0 shadow-sm overflow-hidden mb-8">
+                <CardContent className="p-0">
+                    <div className="bg-gray-50 border-b border-gray-100 p-6">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">{campaign.name}</h3>
+                                <div className="flex gap-2">
+                                    <Badge color={statusColors[campaign.status] || 'gray'} variant="filled">
+                                        {campaign.status.toUpperCase()}
                                     </Badge>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-3xl font-bold text-gray-900">
-                                {Math.round(((campaign.stats.sent + campaign.stats.failed) / (campaign.stats.total || 1)) * 100)}%
-                            </div>
-                            <div className="text-sm text-gray-500">Completion Rate</div>
-                            {['active', 'paused'].includes(campaign.status) && campaign.stats.pending > 0 && (
-                                <div className="text-sm text-blue-600 mt-2 font-medium flex items-center justify-end gap-1">
-                                    ⏳ ~{calculateTimeLeft(campaign.stats.pending, campaign.batch_size, campaign.interval_hours)} left
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-4 mt-6">
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                            <div className="text-sm font-medium text-gray-500 mb-1">Total Leads</div>
-                            <div className="text-2xl font-bold text-gray-900">{campaign.stats.total}</div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                            <div className="text-sm font-medium text-emerald-600 mb-1">Delivered</div>
-                            <div className="text-2xl font-bold text-emerald-700">{campaign.stats.sent}</div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                            <div className="text-sm font-medium text-yellow-600 mb-1">Pending</div>
-                            <div className="text-2xl font-bold text-yellow-700">{campaign.stats.pending}</div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                            <div className="text-sm font-medium text-red-600 mb-1">Failed</div>
-                            <div className="text-2xl font-bold text-red-700">{campaign.stats.failed}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="p-6">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-4 inline-flex items-center gap-2">
-                        <Send className="w-4 h-4 text-gray-400" />
-                        Recent Message Dispatch Log
-                    </h4>
-
-                    {!campaign.recent_messages || campaign.recent_messages.length === 0 ? (
-                        <div className="text-center py-6 text-gray-400 text-sm">
-                            No messages dispatched yet
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-gray-200">
-                                        <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
-                                        <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Recipient</th>
-                                        <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Channel</th>
-                                        <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {campaign.recent_messages.map((msg: any) => (
-                                        <tr key={msg.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                                            <td className="py-2 px-3 font-medium text-gray-800">{msg.lead_name || '—'}</td>
-                                            <td className="py-2 px-3 text-gray-600">{msg.recipient}</td>
-                                            <td className="py-2 px-3">
-                                                <div className="flex gap-1">
-                                                    {(msg.channel || 'unknown').split(', ').map((ch: any) => (
-                                                        <Badge key={ch} color={channelColors[ch] || 'gray'} variant="light" size="xs">
-                                                            {channelLabels[ch] || ch.toUpperCase()}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            </td>
-                                            <td className="py-2 px-3">
-                                                <Tooltip label={msg.error_message || ''} disabled={!msg.error_message} position="top">
-                                                    <Badge
-                                                        color={statusColors[msg.status] || 'gray'}
-                                                        variant="dot"
-                                                        size="sm"
-                                                    >
-                                                        {msg.status.charAt(0).toUpperCase() + msg.status.slice(1)}
-                                                    </Badge>
-                                                </Tooltip>
-                                            </td>
-                                            <td className="py-2 px-3 text-gray-500 text-xs">
-                                                {new Date(msg.created_at).toLocaleTimeString('en-US', {
-                                                    hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric'
-                                                })}
-                                            </td>
-                                        </tr>
+                                    {campaign.channels.map((ch) => (
+                                        <Badge key={ch} color={channelColors[ch] || 'gray'} variant="outline">
+                                            {channelLabels[ch] || ch.toUpperCase()}
+                                        </Badge>
                                     ))}
-                                </tbody>
-                            </table>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-3xl font-bold text-gray-900">
+                                    {Math.round(((stats.sent + stats.failed) / (stats.total || 1)) * 100)}%
+                                </div>
+                                <div className="text-sm text-gray-500">Completion Rate</div>
+                                {['active', 'paused'].includes(campaign.status) && stats.pending > 0 && (
+                                    <div className="text-sm text-blue-600 mt-2 font-medium flex items-center justify-end gap-1">
+                                        ⏳ ~{calculateTimeLeft(stats.pending, campaign.batch_size, campaign.interval_hours)} left
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
-    );
+
+                        <div className="grid grid-cols-4 gap-4 mt-6">
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                <div className="text-sm font-medium text-gray-500 mb-1">Total Leads</div>
+                                <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                <div className="text-sm font-medium text-emerald-600 mb-1">Delivered</div>
+                                <div className="text-2xl font-bold text-emerald-700">{stats.sent}</div>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                <div className="text-sm font-medium text-yellow-600 mb-1">Pending</div>
+                                <div className="text-2xl font-bold text-yellow-700">{stats.pending}</div>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                <div className="text-sm font-medium text-red-600 mb-1">Failed</div>
+                                <div className="text-2xl font-bold text-red-700">{stats.failed}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-6">
+                        <h4 className="text-sm font-semibold text-gray-900 mb-4 inline-flex items-center gap-2">
+                            <Send className="w-4 h-4 text-gray-400" />
+                            Recent Message Dispatch Log
+                        </h4>
+
+                        {!campaign.recent_messages || campaign.recent_messages.length === 0 ? (
+                            <div className="text-center py-6 text-gray-400 text-sm">
+                                No messages dispatched yet
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-gray-200">
+                                            <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
+                                            <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Recipient</th>
+                                            <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Channel</th>
+                                            <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {campaign.recent_messages.map((msg: any) => (
+                                            <tr key={msg.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                                <td className="py-2 px-3 font-medium text-gray-800">{msg.lead_name || '—'}</td>
+                                                <td className="py-2 px-3 text-gray-600">{msg.recipient}</td>
+                                                <td className="py-2 px-3">
+                                                    <div className="flex gap-1">
+                                                        {(msg.channel || 'unknown').split(', ').map((ch: any) => (
+                                                            <Badge key={ch} color={channelColors[ch] || 'gray'} variant="light" size="xs">
+                                                                {channelLabels[ch] || ch.toUpperCase()}
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                                <td className="py-2 px-3">
+                                                    <Tooltip label={msg.error_message || ''} disabled={!msg.error_message} position="top">
+                                                        <Badge
+                                                            color={statusColors[msg.status] || 'gray'}
+                                                            variant="dot"
+                                                            size="sm"
+                                                        >
+                                                            {msg.status.charAt(0).toUpperCase() + msg.status.slice(1)}
+                                                        </Badge>
+                                                    </Tooltip>
+                                                </td>
+                                                <td className="py-2 px-3 text-gray-500 text-xs">
+                                                    {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                                                        hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric'
+                                                    })}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    };
 
     return (
         <div className="mt-4">

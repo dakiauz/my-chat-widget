@@ -49,7 +49,21 @@ export default function BulkMessageStatus({ userId, overrideData }: { userId?: s
         );
     }
 
-    const stats = data.stats;
+    const stats = data.stats || {
+        total: 0,
+        total_sent: 0,
+        total_failed: 0,
+        emails_sent: 0,
+        emails_failed: 0,
+        sms_sent: 0,
+        sms_failed: 0,
+        gmail_sent: 0,
+        gmail_failed: 0,
+        outlook_sent: 0,
+        outlook_failed: 0,
+        smtp_sent: 0,
+        smtp_failed: 0
+    };
     const recentMessages = data.recent_messages || [];
 
     const summaryCards = [
