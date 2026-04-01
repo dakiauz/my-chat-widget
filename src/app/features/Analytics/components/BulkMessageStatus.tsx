@@ -23,8 +23,8 @@ const statusColors: Record<string, string> = {
     pending: 'yellow',
 };
 
-export default function BulkMessageStatus({ userId, overrideData }: { userId?: string; overrideData?: any }) {
-    const { data: individualData, isLoading, isError } = useGetBulkMessageStatsQuery(userId, { skip: !!overrideData });
+export default function BulkMessageStatus({ userId, overrideData, timeframe = '30d' }: { userId?: string; overrideData?: any; timeframe?: string }) {
+    const { data: individualData, isLoading, isError } = useGetBulkMessageStatsQuery({ filter: timeframe, userId }, { skip: !!overrideData });
 
     const data = overrideData ? {
         success: true,

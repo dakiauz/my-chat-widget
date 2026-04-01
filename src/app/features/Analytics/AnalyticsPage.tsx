@@ -157,7 +157,10 @@ export default function AnalyticsPage() {
     );
 
     // Fetch individual stats for subusers (or when owner views themselves)
-    const { data: individualStats, isLoading: individualLoading } = useGetBulkMessageStatsQuery(undefined, { skip: !isSubuser });
+    const { data: individualStats, isLoading: individualLoading } = useGetBulkMessageStatsQuery(
+        { filter, userId: isOwner ? (selectedUserId === 'all' ? undefined : selectedUserId) : undefined },
+        { skip: isOwner && selectedUserId === 'all' }
+    );
 
     const userOptions = [
         { value: 'all', label: '🏆 Whole Team Performance' },
@@ -410,6 +413,7 @@ export default function AnalyticsPage() {
                     <BulkMessageStatus
                         userId={selectedUserId === 'all' ? undefined : selectedUserId}
                         overrideData={isOwner ? (selectedUserId === 'all' ? teamStats : undefined) : individualStats}
+                        timeframe={filter}
                     />
                 </div>
 
@@ -423,6 +427,7 @@ export default function AnalyticsPage() {
                     <CampaignStatus
                         userId={selectedUserId === 'all' ? undefined : selectedUserId}
                         overrideData={isOwner && selectedUserId === 'all' ? teamStats : undefined}
+                        timeframe={filter}
                         onFilterChange={setFilter}
                     />
                 </div>

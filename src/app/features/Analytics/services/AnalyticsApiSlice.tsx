@@ -94,9 +94,9 @@ export const analyticsApiSlice = baseApi.injectEndpoints({
                 },
             }),
         }),
-        getBulkMessageStats: builder.query<IBulkMessageStatsResponse, string | void>({
-            query: (userId) => ({
-                url: `/leads/bulk/message-stats${userId ? `?user_id=${userId}` : ''}`,
+        getBulkMessageStats: builder.query<IBulkMessageStatsResponse, { filter: string; userId?: string | void }>({
+            query: ({ filter = '30d', userId }) => ({
+                url: `/leads/bulk/message-stats?filter=${filter}${userId ? `&user_id=${userId}` : ''}`,
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',

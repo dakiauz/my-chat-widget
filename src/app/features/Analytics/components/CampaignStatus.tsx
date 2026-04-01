@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge, Loader, Tooltip, Divider, Select, Collapse, ActionIcon } from '@mantine/core';
 import { Card, CardContent } from '../../Calls/components/ui/card';
 import { useGetCampaignStatsQuery, ICampaignStats } from '../services/AnalyticsApiSlice';
@@ -35,8 +35,13 @@ const calculateTimeLeft = (pending: number, batchSize: number, intervalMinutes: 
     return `${totalMinutesLeft} Minutes`;
 };
 
-export default function CampaignStatus({ userId, overrideData, onFilterChange }: { userId?: string; overrideData?: any; onFilterChange?: (filter: string) => void }) {
-    const [filter, setFilter] = useState<string>('30d');
+export default function CampaignStatus({ userId, overrideData, timeframe = '30d', onFilterChange }: { userId?: string; overrideData?: any; timeframe?: string; onFilterChange?: (filter: string) => void }) {
+    const [filter, setFilter] = useState<string>(timeframe);
+
+    useEffect(() => {
+        setFilter(timeframe);
+    }, [timeframe]);
+
     const [showPrevious, setShowPrevious] = useState(false);
     const { data: individualData, isLoading, isError } = useGetCampaignStatsQuery({ filter, userId }, { pollingInterval: 5000, skip: !!overrideData });
 
