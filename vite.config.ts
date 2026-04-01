@@ -8,6 +8,10 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
 
     return {
+        define: {
+            'process.env': {},
+            'process.env.NODE_ENV': JSON.stringify('production'),
+        },
         plugins: [
             react(),
         ],
