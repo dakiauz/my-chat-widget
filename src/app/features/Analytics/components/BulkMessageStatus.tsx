@@ -24,7 +24,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function BulkMessageStatus({ userId, overrideData, timeframe = '30d' }: { userId?: string; overrideData?: any; timeframe?: string }) {
-    const { data: individualData, isLoading, isError } = useGetBulkMessageStatsQuery({ filter: timeframe, userId }, { skip: !!overrideData });
+    const { data: individualData, isLoading, isError } = useGetBulkMessageStatsQuery({ filter: 'all', userId }, { skip: !!overrideData });
 
     const data = overrideData ? {
         success: true,

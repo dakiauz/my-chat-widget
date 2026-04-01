@@ -151,14 +151,15 @@ export default function AnalyticsPage() {
     const isOwner = auth?.user?.roles?.some((r: any) => r.name === 'owner');
     const isSubuser = !isOwner;
 
+    // Team performance overview should show all-time data or the top-level filter should be decoupled
     const { data: teamStats, isLoading: teamLoading, isError: teamError } = useGetTeamPerformanceQuery(
-        { filter, userId: selectedUserId === 'all' ? undefined : selectedUserId },
+        { filter: 'all', userId: selectedUserId === 'all' ? undefined : selectedUserId },
         { skip: !isOwner }
     );
 
-    // Fetch individual stats for subusers (or when owner views themselves)
+    // Fetch individual stats (Unfiltered as per user request)
     const { data: individualStats, isLoading: individualLoading } = useGetBulkMessageStatsQuery(
-        { filter, userId: isOwner ? (selectedUserId === 'all' ? undefined : selectedUserId) : undefined },
+        { filter: 'all', userId: isOwner ? (selectedUserId === 'all' ? undefined : selectedUserId) : undefined },
         { skip: isOwner && selectedUserId === 'all' }
     );
 
@@ -413,7 +414,6 @@ export default function AnalyticsPage() {
                     <BulkMessageStatus
                         userId={selectedUserId === 'all' ? undefined : selectedUserId}
                         overrideData={isOwner && selectedUserId === 'all' ? teamStats : undefined}
-                        timeframe={filter}
                     />
                 </div>
 
