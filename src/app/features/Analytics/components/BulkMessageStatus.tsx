@@ -49,7 +49,7 @@ export default function BulkMessageStatus({ userId, overrideData, timeframe = '3
         );
     }
 
-    const stats = data.stats || {
+    const stats = data?.stats || {
         total: 0,
         total_sent: 0,
         total_failed: 0,

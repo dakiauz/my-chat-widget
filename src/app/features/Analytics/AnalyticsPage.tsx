@@ -412,7 +412,7 @@ export default function AnalyticsPage() {
                     {/* Pass the specialized team data if owner & aggregated, otherwise use individual status components */}
                     <BulkMessageStatus
                         userId={selectedUserId === 'all' ? undefined : selectedUserId}
-                        overrideData={isOwner ? (selectedUserId === 'all' ? teamStats : undefined) : individualStats}
+                        overrideData={isOwner && selectedUserId === 'all' ? teamStats : undefined}
                         timeframe={filter}
                     />
                 </div>
