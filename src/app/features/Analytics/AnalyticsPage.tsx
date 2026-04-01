@@ -211,7 +211,7 @@ export default function AnalyticsPage() {
                 </div>
             </div>
 
-            {isError && (
+            {teamError && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center text-red-600">
                     <AlertTriangle className="w-5 h-5 mr-3" />
                     <span>Failed to load team analytics. Please try again.</span>
