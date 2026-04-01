@@ -16,7 +16,7 @@ export default function MessageListener({ echoInstance, conversationId, setMessa
             const channel = echoInstance.channel(channelName);
 
             // Listen for the Chat.Widget.Conversation event
-            channel.listen(".Chat.Widget.Conversation", (data: any) => {
+            channel.listen("Chat.Widget.Conversation", (data: any) => {
                 console.log("Reverb event received in MessageListener:", data);
                 // Update messages in the parent component's state
                 setMessages((prevMessages) => [
