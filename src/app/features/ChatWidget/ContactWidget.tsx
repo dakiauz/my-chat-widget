@@ -39,18 +39,34 @@ type Message = {
     };
 };
 
-const reverbHost = import.meta.env.VITE_REVERB_HOST;
-const reverbPort = parseInt(import.meta.env.VITE_REVERB_PORT);
-const reverbAppKey = import.meta.env.VITE_REVERB_APP_KEY;
+const apiBaseUrl = import.meta.env.VITE_BACKEND_API_ADDRESS || 'http://localhost:8000';
 
-const defaultApiBase = (import.meta.env.VITE_BACKEND_API_ADDRESS || '').replace(/\/$/, '');
+// Derive Reverb host and port from apiBaseUrl
+let defaultReverbHost = 'localhost';
+let defaultReverbPort = 8080;
+try {
+    const url = new URL(apiBaseUrl);
+    defaultReverbHost = url.hostname;
+    defaultReverbPort = url.protocol === 'https:' ? 443 : 8080;
+} catch (e) {
+    console.error("Invalid API URL for Reverb derivation", e);
+}
+
+const reverbAppKey = import.meta.env.VITE_REVERB_APP_KEY || '00yvcmmf59icia963gl5';
+const reverbHost = import.meta.env.VITE_REVERB_HOST || defaultReverbHost;
+const reverbPort = parseInt(import.meta.env.VITE_REVERB_PORT || String(defaultReverbPort));
+
+const defaultApiBase = (apiBaseUrl || '').replace(/\/$/, '');
 
 export default function ContactWidget({
     primaryColor = '#610BFC',
     secondaryColor = '#e5e7eb',
-    companyId: companyIdProp,
+    companyId: companyIdProp = null,
     apiEndpoint = `${defaultApiBase}/chat-widget/create`,
     chatApiEndpoint = `${defaultApiBase}/chat-widget/send`,
+    reverbHost: propReverbHost,
+    reverbPort: propReverbPort,
+    reverbAppKey: propReverbAppKey,
 }: ContactWidgetProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [formStatus, setFormStatus] = useState<FormStatus>('idle');
@@ -195,11 +211,11 @@ export default function ContactWidget({
 
             const config = (window as any).__REVERB_CONFIG || {
                 broadcaster: 'reverb',
-                key: reverbAppKey,
-                wsHost: reverbHost,
-                wsPort: reverbPort,
-                wssPort: reverbPort,
-                forceTLS: false,
+                key: propReverbAppKey || reverbAppKey,
+                wsHost: propReverbHost || reverbHost,
+                wsPort: propReverbPort || reverbPort,
+                wssPort: propReverbPort || reverbPort,
+                forceTLS: (propReverbPort || reverbPort) === 443,
                 enabledTransports: ['ws', 'wss'],
             };
 

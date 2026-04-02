@@ -40,6 +40,19 @@ if (script) {
     const apiEndpoint = `${baseUrl}/api/chat-widget/create`;
     const chatApiEndpoint = `${baseUrl}/api/chat-widget/send`;
 
+    // Derive Reverb settings from the API URL
+    let derivedReverbHost = 'dakia.site';
+    let derivedReverbPort = 443;
+    try {
+        const url = new URL(baseUrl);
+        derivedReverbHost = url.hostname;
+        derivedReverbPort = url.protocol === 'https:' ? 443 : 8080;
+    } catch (e) { }
+
+    const reverbHost = script.getAttribute('data-reverb-host') || derivedReverbHost;
+    const reverbPort = parseInt(script.getAttribute('data-reverb-port') || String(derivedReverbPort));
+    const reverbAppKey = script.getAttribute('data-reverb-key') || import.meta.env.VITE_REVERB_APP_KEY || '00yvcmmf59icia963gl5';
+
     const container = document.createElement('div');
     container.id = 'dakia-chat-widget-root';
     document.body.appendChild(container);
@@ -51,6 +64,9 @@ if (script) {
             secondaryColor={secondaryColor}
             apiEndpoint={apiEndpoint}
             chatApiEndpoint={chatApiEndpoint}
+            reverbHost={reverbHost}
+            reverbPort={reverbPort}
+            reverbAppKey={reverbAppKey}
         />
     );
 }
