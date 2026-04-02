@@ -15,6 +15,11 @@ export default function MessageListener({ echoInstance, conversationId, setMessa
 
             const channel = echoInstance.channel(channelName);
 
+            // Catch-all for ANY event on this channel (The "Security Camera")
+            channel.on('.*', (eventName: string, data: any) => {
+                console.log(`📡 RAW SOCKET EVENT [${eventName}]:`, data);
+            });
+
             const handleMessage = (data: any) => {
                 console.log("🔥 MESSAGE RECEIVED! 🚀 :", data);
                 setMessages((prevMessages) => [
