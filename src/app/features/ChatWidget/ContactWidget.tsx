@@ -39,35 +39,31 @@ type Message = {
     };
 };
 
-const apiBaseUrl = import.meta.env.VITE_BACKEND_API_ADDRESS || 'http://localhost:8000';
-
-// Derive Reverb host and port from apiBaseUrl
-let defaultReverbHost = 'localhost';
-let defaultReverbPort = 8080;
-try {
-    const url = new URL(apiBaseUrl);
-    defaultReverbHost = url.hostname;
-    defaultReverbPort = url.protocol === 'https:' ? 443 : 8080;
-} catch (e) {
-    console.error("Invalid API URL for Reverb derivation", e);
-}
-
-const reverbAppKey = import.meta.env.VITE_REVERB_APP_KEY || '00yvcmmf59icia963gl5';
-const reverbHost = import.meta.env.VITE_REVERB_HOST || defaultReverbHost;
-const reverbPort = parseInt(import.meta.env.VITE_REVERB_PORT || String(defaultReverbPort));
-
-const defaultApiBase = (apiBaseUrl || '').replace(/\/$/, '');
-
 export default function ContactWidget({
     primaryColor = '#610BFC',
     secondaryColor = '#e5e7eb',
     companyId: companyIdProp = null,
-    apiEndpoint = `${defaultApiBase}/chat-widget/create`,
-    chatApiEndpoint = `${defaultApiBase}/chat-widget/send`,
+    apiEndpoint,
+    chatApiEndpoint,
     reverbHost: propReverbHost,
     reverbPort: propReverbPort,
     reverbAppKey: propReverbAppKey,
 }: ContactWidgetProps) {
+    // Determine runtime base API
+    const runtimeApiBase = apiEndpoint ? apiEndpoint.replace(/\/chat-widget\/create$/, '') : 'https://dakia.site';
+
+    // Derive Reverb host and port at RUNTIME
+    let defaultReverbHost = 'dakia.site';
+    let defaultReverbPort = 443;
+    try {
+        const url = new URL(runtimeApiBase);
+        defaultReverbHost = url.hostname;
+        defaultReverbPort = url.protocol === 'https:' ? 443 : 8080;
+    } catch (e) { }
+
+    const reverbAppKey = propReverbAppKey || import.meta.env.VITE_REVERB_APP_KEY || '00yvcmmf59icia963gl5';
+    const reverbHost = propReverbHost || import.meta.env.VITE_REVERB_HOST || defaultReverbHost;
+    const reverbPort = propReverbPort || parseInt(import.meta.env.VITE_REVERB_PORT || String(defaultReverbPort));
     const [isOpen, setIsOpen] = useState(false);
     const [formStatus, setFormStatus] = useState<FormStatus>('idle');
     const [errorMessage, setErrorMessage] = useState('');
@@ -142,7 +138,7 @@ export default function ContactWidget({
         setErrorMessage('');
 
         try {
-            const response = await fetch(apiEndpoint, {
+            const response = await fetch(apiEndpoint || '', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -337,7 +333,7 @@ export default function ContactWidget({
         if (!conversationId) return;
         try {
             // Updated to use the dedicated unauthenticated timer endpoint
-            const response = await fetch(`${apiEndpoint.replace('/create', '/send-timer')}`, {
+            const response = await fetch(`${(apiEndpoint || '').replace('/create', '/send-timer')}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -370,7 +366,7 @@ export default function ContactWidget({
         setUserMessage('');
 
         try {
-            const response = await fetch(chatApiEndpoint, {
+            const response = await fetch(chatApiEndpoint || '', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
