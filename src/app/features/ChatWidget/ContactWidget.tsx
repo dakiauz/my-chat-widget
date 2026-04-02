@@ -429,17 +429,39 @@ export default function ContactWidget({
 
                     {/* Body */}
                     {formStatus === 'conversation' ? (
-                        <div className="flex flex-col flex-grow bg-gray-50 h-[20rem]">
+                        <div className="flex flex-col flex-grow bg-gray-50 h-[28rem]">
                             <div className="flex flex-col flex-1 p-4 gap-3 overflow-y-auto overscroll-contain">
-                                {messages.map((msg, index) => (
-                                    <div
-                                        key={index}
-                                        className={`max-w-[80%] p-3 rounded-lg shadow-sm text-sm ${msg.data.sender_type === 'client' ? 'self-end rounded-br-none' : 'self-start rounded-bl-none'}`}
-                                        style={msg.data.sender_type === 'client' ? getClientBubbleColor() : getAgentBubbleColor()}
-                                    >
-                                        <p>{msg.data.message}</p>
-                                    </div>
-                                ))}
+                                {messages.filter(msg => msg.data && msg.data.message).map((msg, index) => {
+                                    const isClient = msg.data.sender_type === 'client';
+                                    return (
+                                        <div
+                                            key={index}
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: isClient ? 'flex-end' : 'flex-start',
+                                                width: '100%',
+                                                marginBottom: '8px'
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    maxWidth: '85%',
+                                                    padding: '10px 14px',
+                                                    borderRadius: '16px',
+                                                    borderBottomRightRadius: isClient ? '2px' : '16px',
+                                                    borderBottomLeftRadius: isClient ? '16px' : '2px',
+                                                    fontSize: '14px',
+                                                    lineHeight: '1.4',
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                                    ...(isClient ? getClientBubbleColor() : getAgentBubbleColor())
+                                                }}
+                                            >
+                                                <p style={{ margin: 0, wordBreak: 'break-word' }}>{msg.data.message}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                                 <div ref={messagesEndRef} />
                             </div>
                             <form onSubmit={handleUserMessage} className="flex p-4 border-t border-gray-200 bg-white">
