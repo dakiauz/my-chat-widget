@@ -48,6 +48,9 @@ export default defineConfig(({ mode }) => {
             outDir: 'dist-widget',
         } : {
             outDir: 'dist',
+            commonjsOptions: {
+                transformMixedEsModules: true,
+            },
         },
     };
 });
