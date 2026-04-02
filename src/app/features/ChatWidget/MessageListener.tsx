@@ -15,15 +15,17 @@ export default function MessageListener({ echoInstance, conversationId, setMessa
 
             const channel = echoInstance.channel(channelName);
 
-            // Listen for the .Chat.Widget.Conversation event (dot is required for broadcastAs)
-            channel.listen(".Chat.Widget.Conversation", (data: any) => {
+            const handleMessage = (data: any) => {
                 console.log("🔥 MESSAGE RECEIVED! 🚀 :", data);
-                // Update messages in the parent component's state
                 setMessages((prevMessages) => [
                     ...prevMessages,
                     { event: "Chat.Widget.Conversation", channel: channelName, data: data },
                 ]);
-            });
+            };
+
+            // Listen for the .Chat.Widget.Conversation event (dot is required for broadcastAs)
+            channel.listen(".Chat.Widget.Conversation", handleMessage);
+            channel.listen("Chat.Widget.Conversation", handleMessage);
 
             // Cleanup function to leave the channel when the component unmounts or dependencies change
             return () => {
