@@ -203,7 +203,6 @@ export default function ContactWidget({
 
     useEffect(() => {
         if (conversationId !== null && !echoInstance) {
-            console.log('Attempting to connect to WebSocket...');
 
             const config = (window as any).__REVERB_CONFIG || {
                 broadcaster: 'reverb',

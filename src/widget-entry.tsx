@@ -13,7 +13,7 @@ if (typeof (window as any).global === 'undefined') {
 
 const script = document.currentScript as HTMLScriptElement || Array.from(document.getElementsByTagName('script')).find(s => s.src.includes('widget.iife')) as HTMLScriptElement;
 
-console.log("Dakia Widget: Initializing...");
+console.log("%c 🚀 Dakia Widget: V3 Production - Live Chat Active ", "background: #610BFC; color: #fff; border-radius: 4px; padding: 4px;");
 if (!script) {
     console.error("Dakia Widget ERROR: Script tag not found. Ensure the filename contains 'widget.iife'.");
 }
@@ -27,12 +27,6 @@ if (script) {
     const envBackendUrl = (import.meta.env.VITE_BACKEND_API_ADDRESS || '').replace(/\/api$/, '');
     const finalApiUrl = script.getAttribute('data-api-base-url') || envBackendUrl || 'https://dakia.site';
 
-    console.log("Dakia Widget: Configuration Loaded", {
-        clientId,
-        primaryColor,
-        finalApiUrl,
-        mode: import.meta.env.MODE
-    });
 
     // Construct endpoints
     // Ensure finalApiUrl doesn't have a trailing slash to avoid double slashes

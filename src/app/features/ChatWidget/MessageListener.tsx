@@ -15,20 +15,17 @@ export default function MessageListener({ echoInstance, conversationId, setMessa
 
             const channel = echoInstance.channel(channelName);
 
-            // Catch-all for ANY event on this channel (The "Security Camera")
-            channel.on('.*', (eventName: string, data: any) => {
-                console.log(`📡 RAW SOCKET EVENT [${eventName}]:`, data);
-            });
-
             const handleMessage = (data: any) => {
-                console.log("🔥 MESSAGE RECEIVED! 🚀 :", data);
-                setMessages((prevMessages) => [
-                    ...prevMessages,
-                    { event: "Chat.Widget.Conversation", channel: channelName, data: data },
-                ]);
+                setMessages((prevMessages) => {
+                    // Prevent duplicates
+                    if (prevMessages.some(m => m.data.id === data.id)) return prevMessages;
+                    return [
+                        ...prevMessages,
+                        { event: "Chat.Widget.Conversation", channel: channelName, data: data },
+                    ];
+                });
             };
 
-            // Listen for the .Chat.Widget.Conversation event (dot is required for broadcastAs)
             channel.listen(".Chat.Widget.Conversation", handleMessage);
             channel.listen("Chat.Widget.Conversation", handleMessage);
 
