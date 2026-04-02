@@ -10,13 +10,12 @@ export default defineConfig(({ mode }) => {
 
     return {
         define: {
-            process: {
-                env: {
-                    NODE_ENV: JSON.stringify(mode),
-                },
+            'process.env.NODE_ENV': JSON.stringify(mode),
+            'process.env': {
+                NODE_ENV: JSON.stringify(mode),
                 browser: true,
             },
-            global: 'window',
+            'global': 'globalThis',
         },
         plugins: [
             react(),
@@ -32,7 +31,10 @@ export default defineConfig(({ mode }) => {
                 entry: path.resolve(__dirname, 'src/widget-entry.tsx'),
                 name: 'DakiaWidget',
                 fileName: (format) => `widget.${format}.js`,
-                formats: ['iife'], // Compile to a single Immediately Invoked Function Expression
+                formats: ['iife'],
+            },
+            commonjsOptions: {
+                transformMixedEsModules: true,
             },
             rollupOptions: {
                 output: {
@@ -44,7 +46,7 @@ export default defineConfig(({ mode }) => {
                     banner: "window.process = window.process || { env: { NODE_ENV: 'production' }, browser: true }; window.global = window.global || window;",
                 },
             },
-            emptyOutDir: false, // Don't wipe dist used by main app
+            emptyOutDir: false,
             outDir: 'dist-widget',
         } : {
             outDir: 'dist',
