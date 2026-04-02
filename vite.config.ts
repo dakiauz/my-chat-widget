@@ -35,11 +35,13 @@ export default defineConfig(({ mode }) => {
                 formats: ['iife'], // Compile to a single Immediately Invoked Function Expression
             },
             rollupOptions: {
-                // Externalize nothing - bundle everything into one file
-                external: [],
                 output: {
-                    // Force a single file output
-                    inlineDynamicImports: true,
+                    entryFileNames: `[name].iife.js`,
+                    chunkFileNames: `[name].iife.js`,
+                    assetFileNames: `[name].[ext]`,
+                    format: 'iife',
+                    name: 'DakiaWidget',
+                    banner: "window.process = window.process || { env: { NODE_ENV: 'production' }, browser: true }; window.global = window.global || window;",
                 },
             },
             emptyOutDir: false, // Don't wipe dist used by main app
